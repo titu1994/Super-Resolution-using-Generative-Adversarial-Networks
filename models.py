@@ -631,7 +631,7 @@ if __name__ == "__main__":
     #srgan_model.summary()
     #plot(srgan_model, to_file='SRGAN.png', show_shapes=True)
 
-    coco_path = r"D:\Yue\Documents\Torrents\coco2014\train2014"
+    coco_path = r"D:\Yue\Documents\Dataset\coco2014\train2014"
     srgan_network.pre_train_network(coco_path, nb_epochs=1, nb_images=50000)
     #srgan_network.train_full_network(coco_path, nb_images=50000, nb_epochs=1)
 
