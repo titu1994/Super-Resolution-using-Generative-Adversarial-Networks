@@ -314,7 +314,7 @@ class SRGANNetwork:
         self.srgan_model_ = None
         self.generative_model_ = None
 
-    def build_srgan_network(self, use_small_srgan=False, use_small_gan=False):
+    def build_srgan_model(self, use_small_srgan=False, use_small_gan=False):
         large_width = self.img_width * 4
         large_height = self.img_height * 4
 
@@ -345,7 +345,7 @@ class SRGANNetwork:
 
         return self.srgan_model_
 
-    def build_srgan_pretrain_network(self, use_small_srgan=False):
+    def build_srgan_pretrain_model(self, use_small_srgan=False):
         large_width = self.img_width * 4
         large_height = self.img_height * 4
 
@@ -373,18 +373,18 @@ class SRGANNetwork:
 
         return self.srgan_model_
 
-    def pre_train_network(self, image_dir, nb_images=50000, nb_epochs=1, use_small_srgan=False):
-        self.build_srgan_pretrain_network(use_small_srgan=use_small_srgan)
+    def pre_train_model(self, image_dir, nb_images=50000, nb_epochs=1, use_small_srgan=False):
+        self.build_srgan_pretrain_model(use_small_srgan=use_small_srgan)
 
-        self._train_network(image_dir, nb_images=nb_images, nb_epochs=nb_epochs, pre_train=True)
+        self._train_model(image_dir, nb_images=nb_images, nb_epochs=nb_epochs, pre_train=True)
 
-    def train_full_network(self, image_dir, nb_images=50000, nb_epochs=10):
-        self._train_network(image_dir, nb_images, nb_epochs, load_generative_weights=True,
-                            load_discriminator_weights=True)
+    def train_full_model(self, image_dir, nb_images=50000, nb_epochs=10):
+        self._train_model(image_dir, nb_images, nb_epochs, load_generative_weights=True,
+                          load_discriminator_weights=True)
 
-    def _train_network(self, image_dir, nb_images=50000, nb_epochs=20, pre_train=False,
-                      load_generative_weights=False, load_discriminator_weights=False,
-                       save_loss=True):
+    def _train_model(self, image_dir, nb_images=50000, nb_epochs=20, pre_train=False,
+                     load_generative_weights=False, load_discriminator_weights=False,
+                     save_loss=True):
 
         assert self.img_width >= 16, "Minimum image width must be at least 16"
         assert self.img_height >= 16, "Minimum image height must be at least 16"
@@ -624,16 +624,16 @@ class SRGANNetwork:
 if __name__ == "__main__":
     from keras.utils.visualize_util import plot
     srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-    #srgan_model = srgan_network.build_srgan_network()
+    #srgan_model = srgan_network.build_srgan_model()
 
-    #srgan_model = srgan_network.build_srgan_pretrain_network()
+    #srgan_model = srgan_network.build_srgan_pretrain_model()
 
     #srgan_model.summary()
     #plot(srgan_model, to_file='SRGAN.png', show_shapes=True)
 
     coco_path = r"D:\Yue\Documents\Dataset\coco2014\train2014"
-    srgan_network.pre_train_network(coco_path, nb_epochs=1, nb_images=50000)
-    #srgan_network.train_full_network(coco_path, nb_images=50000, nb_epochs=1)
+    srgan_network.pre_train_model(coco_path, nb_epochs=1, nb_images=50000)
+    #srgan_network.train_full_model(coco_path, nb_images=50000, nb_epochs=1)
 
 
 
