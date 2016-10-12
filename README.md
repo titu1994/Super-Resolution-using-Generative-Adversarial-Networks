@@ -35,7 +35,7 @@ set whether the model can be trained or not.
 To just create the pretrain model:
 ```
 srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-srgan_model = srgan_network.build_srgan_pretrain_network()
+srgan_model = srgan_network.build_srgan_pretrain_model()
 
 # Plot the model
 from keras.utils.visualize_util import plot
@@ -45,13 +45,13 @@ plot(srgan_model, to_file='SRGAN.png', show_shapes=True)
 To pretrain the network:
 ```
 srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-srgan_network.pre_train_network(iamges_path, nb_epochs=1, nb_images=50000)
+srgan_network.pre_train_model(iamges_path, nb_epochs=1, nb_images=50000)
 ```
 
 To train the full network (Does NOT work properly right now, Discriminator is not correctly trained):
 ```
 srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-srgan_network.train_full_network(coco_path, nb_images=80000, nb_epochs=10)
+srgan_network.train_full_model(coco_path, nb_images=80000, nb_epochs=10)
 ```
 
 # Drawbacks:
