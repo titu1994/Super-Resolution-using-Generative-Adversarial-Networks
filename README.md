@@ -24,6 +24,36 @@ In the full train mode:
 2. Discriminator loss is also added to the VGGContentLoss and TVLoss.
 3. Content regularizer loss is applied to the VGG Convolution 5-3 layer. (VGG 16 is used instead of 19 for now)
 
+# Usage
+Currently, models.py contains most of the code to train and create the models. To use different modes, uncomment the parts of the code that you need.
+
+Note the difference between the *_network objects and *_model objects. 
+- The *_network objects reflect to the helper classes which create and manage the Keras models, load and save weights and 
+set whether the model can be trained or not.
+- The *_models objects represent the underlying Keras model. 
+
+To pretrain the network:
+```
+srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
+srgan_network.pre_train_network(iamges_path, nb_epochs=1, nb_images=50000)
+```
+
+To just create the pretrain model:
+```
+srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
+srgan_model = srgan_network.build_srgan_pretrain_network()
+
+# Plot the model
+from keras.utils.visualize_util import plot
+plot(srgan_model, to_file='SRGAN.png', show_shapes=True)
+```
+
+To train the full network (Does NOT work properly right now, Discriminator is not correctly trained):
+```
+srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
+srgan_network.train_full_network(coco_path, nb_images=80000, nb_epochs=10)
+```
+
 # Drawbacks:
 - Since keras has internal checks for batch size, we have to bypass an internal keras check called check_array_length(),
 which checks the input and output batch sizes. As we provide the original images to Input 2 and Input 3, batch size doubles. 
