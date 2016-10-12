@@ -28,15 +28,9 @@ In the full train mode:
 Currently, models.py contains most of the code to train and create the models. To use different modes, uncomment the parts of the code that you need.
 
 Note the difference between the *_network objects and *_model objects. 
-- The *_network objects reflect to the helper classes which create and manage the Keras models, load and save weights and 
+- The *_network objects refer to the helper classes which create and manage the Keras models, load and save weights and 
 set whether the model can be trained or not.
-- The *_models objects represent the underlying Keras model. 
-
-To pretrain the network:
-```
-srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-srgan_network.pre_train_network(iamges_path, nb_epochs=1, nb_images=50000)
-```
+- The *_models objects refer to the underlying Keras model. 
 
 To just create the pretrain model:
 ```
@@ -46,6 +40,12 @@ srgan_model = srgan_network.build_srgan_pretrain_network()
 # Plot the model
 from keras.utils.visualize_util import plot
 plot(srgan_model, to_file='SRGAN.png', show_shapes=True)
+```
+
+To pretrain the network:
+```
+srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
+srgan_network.pre_train_network(iamges_path, nb_epochs=1, nb_images=50000)
 ```
 
 To train the full network (Does NOT work properly right now, Discriminator is not correctly trained):
