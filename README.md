@@ -9,13 +9,13 @@ A simplified view of the model can be seen as below: <br>
 # Implementation Details
 
 The SRGAN model is built in stages within models.py. Initially, only the SR-ResNet model is created, to which the VGG network is appended 
-to create the pre-training model. 
+to create the pre-training model. The VGG weights are freezed as we will not update these weights.
 
 In the pre-train mode:
 
 1. The discriminator model is not attached to the entire network. Therefore it is only the SR + VGG model that will be pretrained.
 2. During pretraining, the VGG perceptual losses will be used to train (using the ContentVGGRegularizer) and TotalVariation loss (using 
-TVRegularizer). No other loss (MSE, Discriminator) will be applied.
+TVRegularizer). No other loss (MSE, Binary crosss entropy, Discriminator) will be applied.
 3. Content Regularizer loss will be applied to the VGG Convolution 2-2 layer
 
 In the full train mode:
