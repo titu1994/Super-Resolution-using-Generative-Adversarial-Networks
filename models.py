@@ -397,7 +397,7 @@ class SRGANNetwork:
                 self.discriminative_network.load_gan_weights(self.srgan_model_)
 
         datagen = ImageDataGenerator(rescale=1. / 255)
-        img_width = self.img_height * 4
+        img_width = self.img_width * 4
         img_height = self.img_height * 4
 
         early_stop = False
@@ -449,7 +449,7 @@ class SRGANNetwork:
                         print("Validation image..")
                         output_image_batch = self.generative_network.get_generator_output(x_generator,
                                                                                           self.srgan_model_)
-                        output_image_batch = output_image_batch[0]
+                        #output_image_batch = output_image_batch[0]
 
                         average_psnr = 0.0
                         for x_i in range(self.batch_size):
