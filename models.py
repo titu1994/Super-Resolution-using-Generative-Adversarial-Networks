@@ -623,7 +623,7 @@ class SRGANNetwork:
 
 if __name__ == "__main__":
     from keras.utils.visualize_util import plot
-    srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
+    srgan_network = SRGANNetwork(img_width=96, img_height=96, batch_size=1)
     #srgan_model = srgan_network.build_srgan_model()
 
     #srgan_model = srgan_network.build_srgan_pretrain_model()

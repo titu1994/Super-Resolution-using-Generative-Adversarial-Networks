@@ -106,7 +106,7 @@ def fit(model, x, y, batch_size=32, nb_epoch=10, verbose=1, callbacks=[],
     Note: We did not use model._standardize_user_data(...) but instead used the above
     standardize_user_data(...) method to bypass the original standardize code in keras.
     '''
-    x, y, sample_weights = _standardize_user_data(x, y,
+    x, y, sample_weights = _standardize_user_data(model, x, y,
                                                   sample_weight=sample_weight,
                                                   class_weight=class_weight,
                                                   check_batch_dim=False,
