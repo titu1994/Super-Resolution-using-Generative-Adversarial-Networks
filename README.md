@@ -54,6 +54,16 @@ srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
 srgan_network.train_full_model(coco_path, nb_images=80000, nb_epochs=10)
 ```
 
+# Benchmarks
+Currently supports validation agains Set5, Set14 and BSD 100 dataset images. To download the images, each of the 3 dataset have scripts called download_*.py which must be run before running benchmark_test.py test.
+
+Current Scores (Due to RGB grid and Blurred restoration):
+
+**SR ResNet:**
+- Set5 : Average PSNR of Set5 validation images : 22.1211430348
+- Set14 : Average PSNR of Set5 validation images : 20.3971611357
+- BSD100 : Average PSNR of BSD100 validation images : 20.9544390316
+
 # Drawbacks:
 - Since keras has internal checks for batch size, we have to bypass an internal keras check called check_array_length(),
 which checks the input and output batch sizes. As we provide the original images to Input 2 and Input 3, batch size doubles. 
