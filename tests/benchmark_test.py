@@ -276,14 +276,15 @@ class SRResNetTest:
         print("Finished training SRGAN network. Saving model weights.")
 
 
-
 if __name__ == "__main__":
     coco_path = r""
 
-    sr_resnet_test = SRResNetTest(img_width=32, img_height=32, batch_size=1)
+    img_width = img_height = 96
+
+    sr_resnet_test = SRResNetTest(img_width=img_width, img_height=img_height, batch_size=1)
     sr_resnet_test.build_model(load_weights=True)
     #sr_resnet_test.train_model(coco_path, nb_images=50000, nb_epochs=1)
 
-    test_set5(sr_resnet_test.model)
-    test_set14(sr_resnet_test.model)
-    test_bsd100(sr_resnet_test.model)
+    test_set5(sr_resnet_test.model, img_width=img_width, img_height=img_height)
+    test_set14(sr_resnet_test.model, img_width=img_width, img_height=img_height)
+    test_bsd100(sr_resnet_test.model, img_width=img_width, img_height=img_height)
