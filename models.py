@@ -260,8 +260,8 @@ class GenerativeNetwork:
 
         tv_regularizer = TVRegularizer(img_width=self.img_width * 4, img_height=self.img_height * 4,
                                        weight=self.tv_weight)
-        x = Convolution2D(3, 3, 3, activation="linear", border_mode='same', activity_regularizer=tv_regularizer,
-                          name='sr_res_conv_final')(x)
+        x = Convolution2D(3, 3, 3, activation="linear", border_mode='same', name='sr_res_conv_final',
+                          activity_regularizer=tv_regularizer)(x)
         #x = Denormalize(name='sr_res_output')(x)
 
         return x
@@ -449,7 +449,8 @@ class SRGANNetwork:
                         print("Validation image..")
                         output_image_batch = self.generative_network.get_generator_output(x_generator,
                                                                                           self.srgan_model_)
-                        #output_image_batch = output_image_batch[0]
+                        if type(output_image_batch) == list:
+                            output_image_batch = output_image_batch[0]
 
                         average_psnr = 0.0
                         for x_i in range(self.batch_size):
@@ -564,24 +565,8 @@ class SRGANNetwork:
                     if iteration % 1000 == 0 and iteration != 0:
                         print("Saving model weights.")
                         # Save predictive (SR network) weights
-                        self.generative_model_.save_weights(self.generative_network.sr_weights_path, overwrite=True)
-
-                        if not pre_train:
-                            # Save GAN (discriminative network) weights
-                            self.discriminative_network.save_gan_weights(self.srgan_model_)
-
-                        if save_loss:
-                            print("Saving loss history")
-
-                            if pre_train:
-                                with open('pretrain losses.json', 'w') as f:
-                                    json.dump(loss_history, f)
-
-                            else:
-                                with open('fulltrain losses.json', 'w') as f:
-                                    json.dump(loss_history, f)
-
-                            print("Saved loss history")
+                        self._save_model_weights(pre_train)
+                        self._save_loss_history(loss_history, pre_train, save_loss)
 
                     if iteration >= nb_images:
                         break
@@ -597,16 +582,18 @@ class SRGANNetwork:
                 break
 
         print("Finished training SRGAN network. Saving model weights.")
-
         # Save predictive (SR network) weights
-        self.generative_model_.save_weights(self.generative_network.sr_weights_path)
+        self._save_model_weights(pre_train)
+        print("Weights saved in 'weights' directory")
+        self._save_loss_history(loss_history, pre_train, save_loss)
 
+    def _save_model_weights(self, pre_train):
+        self.generative_model_.save_weights(self.generative_network.sr_weights_path, overwrite=True)
         if not pre_train:
             # Save GAN (discriminative network) weights
             self.discriminative_network.save_gan_weights(self.srgan_model_)
 
-        print("Weights saved in 'weights' directory")
-
+    def _save_loss_history(self, loss_history, pre_train, save_loss):
         if save_loss:
             print("Saving loss history")
 
@@ -623,7 +610,7 @@ class SRGANNetwork:
 
 if __name__ == "__main__":
     from keras.utils.visualize_util import plot
-    srgan_network = SRGANNetwork(img_width=96, img_height=96, batch_size=1)
+    srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
     #srgan_model = srgan_network.build_srgan_model()
 
     #srgan_model = srgan_network.build_srgan_pretrain_model()
