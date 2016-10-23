@@ -439,8 +439,8 @@ class SRGANNetwork:
                     x_generator = np.empty((self.batch_size, self.img_width, self.img_height, 3))
 
                     for j in range(self.batch_size):
-                        img = gaussian_filter(x_temp[j], sigma=0.5)
-                        img = imresize(img, (self.img_width, self.img_height))
+                        img = gaussian_filter(x_temp[j], sigma=0.1)
+                        img = imresize(img, (self.img_width, self.img_height), interp='bicubic')
                         x_generator[j, :, :, :] = img
 
                     x_generator = x_generator.transpose((0, 3, 1, 2))
@@ -476,10 +476,6 @@ class SRGANNetwork:
                             val_x = x[x_i].copy() * 255.
                             val_x = val_x.transpose((1, 2, 0))
                             val_x = np.clip(val_x, 0, 255).astype('uint8')
-
-                            # print('min = ', np.min(output_image_batch[x_i]))
-                            # print('max = ', np.max(output_image_batch[x_i]))
-                            # print('mean = ', np.mean(output_image_batch[x_i]))
 
                             output_image = output_image_batch[x_i]
                             output_image = output_image.transpose((1, 2, 0))
@@ -584,7 +580,6 @@ class SRGANNetwork:
         print("Finished training SRGAN network. Saving model weights.")
         # Save predictive (SR network) weights
         self._save_model_weights(pre_train)
-        print("Weights saved in 'weights' directory")
         self._save_loss_history(loss_history, pre_train, save_loss)
 
     def _save_model_weights(self, pre_train):
