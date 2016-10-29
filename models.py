@@ -574,7 +574,6 @@ class SRGANNetwork:
                                                               nb_epoch=1, verbose=0)
 
                         discriminator_loss = hist.history['loss'][0]
-                        discriminator_acc = hist.history['acc'][0]
 
                         if save_loss:
                             loss_history['discriminator_loss'].append(discriminator_loss)
@@ -627,7 +626,6 @@ class SRGANNetwork:
 
                         if save_loss:
                             loss_history['discriminator_loss'].append(discriminator_loss)
-
                             loss_history['generator_loss'].append(generative_loss)
 
                         if prev_improvement == -1:
@@ -646,7 +644,7 @@ class SRGANNetwork:
                         print("Saving model weights.")
                         # Save predictive (SR network) weights
                         self._save_model_weights(pre_train_srgan, pre_train_discriminator)
-                        self._save_loss_history(loss_history, pre_train_srgan, save_loss)
+                        self._save_loss_history(loss_history, pre_train_srgan, pre_train_discriminator, save_loss)
 
                     if iteration >= nb_images:
                         break
@@ -664,7 +662,7 @@ class SRGANNetwork:
         print("Finished training SRGAN network. Saving model weights.")
         # Save predictive (SR network) weights
         self._save_model_weights(pre_train_srgan, pre_train_discriminator)
-        self._save_loss_history(loss_history, pre_train_srgan, save_loss)
+        self._save_loss_history(loss_history, pre_train_srgan, pre_train_discriminator, save_loss)
 
     def _save_model_weights(self, pre_train_srgan, pre_train_discriminator):
         if not pre_train_discriminator:
@@ -674,14 +672,16 @@ class SRGANNetwork:
             # Save GAN (discriminative network) weights
             self.discriminative_network.save_gan_weights(self.discriminative_model_)
 
-    def _save_loss_history(self, loss_history, pre_train, save_loss):
+    def _save_loss_history(self, loss_history, pre_train_srgan, pre_train_discriminator, save_loss):
         if save_loss:
             print("Saving loss history")
 
-            if pre_train:
-                with open('pretrain losses.json', 'w') as f:
+            if pre_train_srgan:
+                with open('pretrain losses - srgan.json', 'w') as f:
                     json.dump(loss_history, f)
-
+            elif pre_train_discriminator:
+                with open('pretrain losses - discriminator.json', 'w') as f:
+                    json.dump(loss_history, f)
             else:
                 with open('fulltrain losses.json', 'w') as f:
                     json.dump(loss_history, f)
