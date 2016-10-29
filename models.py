@@ -130,13 +130,10 @@ class DiscriminatorNetwork:
 
         self.gan_layers = None
 
-    def append_gan_network(self, x_in, true_X_input):
-
-        # Append the inputs to the output of the SRResNet
-        x = merge([x_in, true_X_input], mode='concat', concat_axis=0)
+    def append_gan_network(self, true_X_input):
 
         # Normalize the inputs via custom VGG Normalization layer
-        x = Normalize(type="gan", value=255., name="gan_normalize")(x)
+        x = Normalize(type="gan", value=255., name="gan_normalize")(true_X_input)
 
         x = Convolution2D(64, self.k, self.k, border_mode='same', name='gan_conv1_1')(x)
         x = LeakyReLU(0.3, name="gan_lrelu1_1")(x)
@@ -195,25 +192,24 @@ class DiscriminatorNetwork:
         return model
 
     def save_gan_weights(self, model):
-        x_in = Input(shape=(3, self.img_width, self.img_height))
         true_x_input = Input(shape=(3, self.img_width, self.img_height))
 
-        temp_gan_model = self.append_gan_network(x_in, true_x_input)
-        temp_gan_model = Model([x_in, true_x_input], temp_gan_model)
+        temp_gan_out = self.append_gan_network(true_x_input)
+        temp_gan_model = Model(true_x_input, temp_gan_out)
 
         if self.gan_layers is None:
             self.gan_layers = [layer for layer in model.layers
                                 if 'gan_' in layer.name]
 
         temp_gan_layers = [layer for layer in temp_gan_model.layers]
-        temp_gan_layers = temp_gan_layers[3:] # First 2 are input layers, 3rd is merge layer. Not needed.
+        temp_gan_layers = temp_gan_layers[1:] # First 2 are input layers, 3rd is merge layer. Not needed.
 
         len_gan = len(self.gan_layers)
         len_temp_gan = len(temp_gan_layers)
         assert len_gan == len_temp_gan, "Number of layers in temporary GAN layer does not " \
-                                        "match the number of GAN layers in SRGAN model." \
-                                        "Number of layers in temp_gan = %d," \
-                                        "Number of layers in gan_layers = %d" % (len_gan,len_temp_gan)
+                                        "match the number of GAN layers in SRGAN model.\n" \
+                                        "Number of layers in temp_gan = %d while " \
+                                        "Number of layers in gan_layers = %d" % (len_gan, len_temp_gan)
 
         for i, temp_gan_layer in enumerate(temp_gan_layers):
             temp_gan_layer.set_weights(self.gan_layers[i].get_weights())
@@ -236,7 +232,7 @@ class GenerativeNetwork:
         self.gan_weight = gan_weight
         self.tv_weight = tv_weight
 
-        self.mode = 0
+        self.mode = 2
 
         self.sr_res_layers = None
         self.sr_weights_path = "weights/SRGAN.h5"
@@ -307,19 +303,21 @@ class SRGANNetwork:
         self.img_height = img_height
         self.batch_size = batch_size
 
-        self.discriminative_network = None
-        self.generative_network = None
-        self.vgg_network = None
+        self.discriminative_network = None # type: DiscriminatorNetwork
+        self.generative_network = None # type: GenerativeNetwork
+        self.vgg_network = None # type: VGGNetwork
 
-        self.srgan_model_ = None
-        self.generative_model_ = None
+        self.srgan_model_ = None # type: Model
+        self.generative_model_ = None # type: Model
+        self.discriminative_model_ = None #type: Model
 
-    def build_srgan_model(self, use_small_srgan=False, use_small_gan=False):
+    def build_srgan_model(self, use_small_srgan=False, use_small_discriminator=False):
         large_width = self.img_width * 4
         large_height = self.img_height * 4
 
         self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, use_small_srgan)
-        self.discriminative_network = DiscriminatorNetwork(large_width, large_height, small_model=use_small_gan)
+        self.discriminative_network = DiscriminatorNetwork(large_width, large_height,
+                                                           small_model=use_small_discriminator)
         self.vgg_network = VGGNetwork(large_width, large_height)
 
         ip = Input(shape=(3, self.img_width, self.img_height), name='x_generator')
@@ -327,13 +325,16 @@ class SRGANNetwork:
         ip_vgg = Input(shape=(3, large_width, large_height), name='x_vgg') # Actual X images
 
         sr_output = self.generative_network.create_sr_model(ip)
-
         self.generative_model_ = Model(ip, sr_output)
 
-        gan_output = self.discriminative_network.append_gan_network(sr_output, ip_gan)
-        vgg_output = self.vgg_network.append_vgg_network(sr_output, ip_vgg)
+        gan_output = self.discriminative_network.append_gan_network(ip_gan)
+        self.discriminative_model_ = Model(ip_gan, gan_output)
 
-        self.srgan_model_ = Model(input=[ip, ip_gan, ip_vgg],
+        generator_output = self.generative_model_(ip)
+        gan_output = self.discriminative_model_(generator_output)
+        vgg_output = self.vgg_network.append_vgg_network(generator_output, ip_vgg)
+
+        self.srgan_model_ = Model(input=[ip, ip_vgg],
                                   output=[gan_output, vgg_output])
 
         self.vgg_network.load_vgg_weight(self.srgan_model_)
@@ -341,9 +342,41 @@ class SRGANNetwork:
         srgan_optimizer = Adam(lr=1e-4)
 
         self.generative_model_.compile(srgan_optimizer, dummy_loss)
+        self.discriminative_model_.compile(srgan_optimizer, loss='binary_crossentropy', metrics=['acc'])
         self.srgan_model_.compile(srgan_optimizer, dummy_loss)
 
         return self.srgan_model_
+
+    def build_discriminator_pretrain_model(self, use_small_srgan=False, use_small_discriminator=False):
+        large_width = self.img_width * 4
+        large_height = self.img_height * 4
+
+        self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, use_small_srgan)
+        self.discriminative_network = DiscriminatorNetwork(large_width, large_height,
+                                                           small_model=use_small_discriminator)
+
+        ip = Input(shape=(3, self.img_width, self.img_height), name='x_generator')
+        ip_gan = Input(shape=(3, large_width, large_height), name='x_discriminator')  # Actual X images
+
+        sr_output = self.generative_network.create_sr_model(ip)
+        self.generative_model_ = Model(ip, sr_output)
+        self.generative_network.set_trainable(self.generative_model_, value=False)
+
+        gan_output = self.discriminative_network.append_gan_network(ip_gan)
+        self.discriminative_model_ = Model(ip_gan, gan_output)
+
+        generator_out = self.generative_model_(ip)
+        gan_output = self.discriminative_model_(generator_out)
+
+        self.srgan_model_ = Model(input=ip, output=gan_output)
+
+        srgan_optimizer = Adam(lr=1e-4)
+
+        self.generative_model_.compile(srgan_optimizer, loss='mse')
+        self.discriminative_model_.compile(srgan_optimizer, loss='binary_crossentropy', metrics=['acc'])
+        self.srgan_model_.compile(srgan_optimizer, loss='binary_crossentropy', metrics=['acc'])
+
+        return self.discriminative_model_
 
     def build_srgan_pretrain_model(self, use_small_srgan=False):
         large_width = self.img_width * 4
@@ -373,28 +406,37 @@ class SRGANNetwork:
 
         return self.srgan_model_
 
-    def pre_train_model(self, image_dir, nb_images=50000, nb_epochs=1, use_small_srgan=False):
+    def pre_train_srgan(self, image_dir, nb_images=50000, nb_epochs=1, use_small_srgan=False):
         self.build_srgan_pretrain_model(use_small_srgan=use_small_srgan)
 
-        self._train_model(image_dir, nb_images=nb_images, nb_epochs=nb_epochs, pre_train=True)
+        self._train_model(image_dir, nb_images=nb_images, nb_epochs=nb_epochs, pre_train_srgan=True)
 
-    def train_full_model(self, image_dir, nb_images=50000, nb_epochs=10):
-        self._train_model(image_dir, nb_images, nb_epochs, load_generative_weights=True,
-                          load_discriminator_weights=True)
+    def pre_train_discriminator(self, image_dir, nb_images=50000, nb_epochs=1, use_small_discriminator=False):
+        self.build_discriminator_pretrain_model(use_small_discriminator)
 
-    def _train_model(self, image_dir, nb_images=50000, nb_epochs=20, pre_train=False,
-                     load_generative_weights=False, load_discriminator_weights=False,
+        self._train_model(image_dir, nb_images, nb_epochs, pre_train_discriminator=True,
+                          load_generative_weights=True)
+
+    def train_full_model(self, image_dir, nb_images=50000, nb_epochs=10, use_small_srgan=False,
+                         use_small_discriminator=False):
+
+        self.build_srgan_model(use_small_srgan, use_small_discriminator)
+
+        self._train_model(image_dir, nb_images, nb_epochs, load_generative_weights=True, load_discriminator_weights=True)
+
+    def _train_model(self, image_dir, nb_images=50000, nb_epochs=20, pre_train_srgan=False,
+                     pre_train_discriminator=False, load_generative_weights=False, load_discriminator_weights=False,
                      save_loss=True):
 
         assert self.img_width >= 16, "Minimum image width must be at least 16"
         assert self.img_height >= 16, "Minimum image height must be at least 16"
 
-        if not pre_train:
-            if load_generative_weights:
-                self.generative_model_.load_weights(self.generative_network.sr_weights_path)
+        if load_generative_weights:
+            self.generative_model_.load_weights(self.generative_network.sr_weights_path)
+            print("Loaded Generator weights")
 
-            if load_discriminator_weights:
-                self.discriminative_network.load_gan_weights(self.srgan_model_)
+        if load_discriminator_weights:
+            self.discriminative_network.load_gan_weights(self.srgan_model_)
 
         datagen = ImageDataGenerator(rescale=1. / 255)
         img_width = self.img_width * 4
@@ -405,17 +447,21 @@ class SRGANNetwork:
         prev_improvement = -1
 
         if save_loss:
-            if pre_train:
+            if pre_train_srgan:
                 loss_history = {'generator_loss' : [],
                                 'val_psnr' : [], }
+            elif pre_train_discriminator:
+                loss_history = {'discriminator_loss' : [],
+                                'discriminator_acc' : [], }
             else:
                 loss_history = {'discriminator_loss' : [],
+                                'discriminator_acc' : [],
                                 'generator_loss' : [],
                                 'val_psnr': [], }
 
         y_vgg_dummy = np.zeros((self.batch_size * 2, 3, img_width // 32, img_height // 32)) # 5 Max Pools = 2 ** 5 = 32
 
-        if not pre_train:
+        if not pre_train_srgan:
             y_gan = [0] * self.batch_size + [1] * self.batch_size
             y_gan = np.asarray(y_gan, dtype=np.float32).reshape(-1, 1)
 
@@ -429,7 +475,7 @@ class SRGANNetwork:
                 try:
                     t1 = time.time()
 
-                    if not pre_train:
+                    if not pre_train_srgan and not pre_train_discriminator:
                         x_vgg = x.copy() * 255 # VGG input [0 - 255 scale]
 
                     # resize images
@@ -439,13 +485,13 @@ class SRGANNetwork:
                     x_generator = np.empty((self.batch_size, self.img_width, self.img_height, 3))
 
                     for j in range(self.batch_size):
-                        img = gaussian_filter(x_temp[j], sigma=0.1)
+                        img = gaussian_filter(x_temp[j], sigma=1.0)
                         img = imresize(img, (self.img_width, self.img_height), interp='bicubic')
                         x_generator[j, :, :, :] = img
 
                     x_generator = x_generator.transpose((0, 3, 1, 2))
 
-                    if iteration % 50 == 0 and iteration != 0 :
+                    if iteration % 50 == 0 and iteration != 0 and not pre_train_discriminator:
                         print("Validation image..")
                         output_image_batch = self.generative_network.get_generator_output(x_generator,
                                                                                           self.srgan_model_)
@@ -495,7 +541,7 @@ class SRGANNetwork:
                         '''
                         continue
 
-                    if pre_train:
+                    if pre_train_srgan:
                         # Train only generator + vgg network
 
                         # Use custom bypass_fit to bypass the check for same input and output batch size
@@ -517,26 +563,63 @@ class SRGANNetwork:
 
                         print("Iter : %d / %d | Improvement : %0.2f percent | Time required : %0.2f seconds | "
                               "Generative Loss : %0.3f" % (iteration, nb_images, improvement, t2 - t1, sr_loss))
+                    elif pre_train_discriminator:
+                        # Train only discriminator
+                        X_pred = self.generative_model_.predict(x_generator, self.batch_size)
+                        X_pred /= 255
+
+                        X = np.concatenate((X_pred, x))
+
+                        hist = self.discriminative_model_.fit(X, y_gan, batch_size=self.batch_size * 2,
+                                                              nb_epoch=1, verbose=0)
+
+                        discriminator_loss = hist.history['loss'][0]
+                        discriminator_acc = hist.history['acc'][0]
+
+                        if save_loss:
+                            loss_history['discriminator_loss'].append(discriminator_loss)
+
+                        if prev_improvement == -1:
+                            prev_improvement = discriminator_loss
+
+                        improvement = (prev_improvement - discriminator_loss) / prev_improvement * 100
+                        prev_improvement = discriminator_loss
+
+                        iteration += self.batch_size
+                        t2 = time.time()
+
+                        print("Iter : %d / %d | Improvement : %0.2f percent | Time required : %0.2f seconds | "
+                            "Discriminator Loss : %0.2f" % (iteration, nb_images,
+                                                            improvement, t2 - t1,
+                                                            discriminator_loss))
 
                     else:
-
                         # Train only discriminator, disable training of srgan
                         self.discriminative_network.set_trainable(self.srgan_model_, value=True)
                         self.generative_network.set_trainable(self.srgan_model_, value=False)
 
                         # Use custom bypass_fit to bypass the check for same input and output batch size
-                        hist = bypass_fit(self.srgan_model_, [x_generator, x * 255, x_vgg],
-                                                 [y_gan, y_vgg_dummy],
-                                                 batch_size=self.batch_size, nb_epoch=1, verbose=0)
+                        # hist = bypass_fit(self.srgan_model_, [x_generator, x * 255, x_vgg],
+                        #                          [y_gan, y_vgg_dummy],
+                        #                          batch_size=self.batch_size, nb_epoch=1, verbose=0)
+
+                        X_pred = self.generative_model_.predict(x, self.batch_size)
+                        X_pred /= 255
+
+                        X = np.concatenate((X_pred, x))
+
+                        hist = self.discriminative_model_.fit(X, y_gan, verbose=0,
+                                                              batch_size=self.batch_size * 2, nb_epoch=1)
 
                         discriminator_loss = hist.history['loss'][0]
+                        discriminator_acc = hist.history['acc'][0]
 
                         # Train only generator, disable training of discriminator
                         self.discriminative_network.set_trainable(self.srgan_model_, value=False)
                         self.generative_network.set_trainable(self.srgan_model_, value=True)
 
                         # Use custom bypass_fit to bypass the check for same input and output batch size
-                        hist = bypass_fit(self.srgan_model_, [x_generator, x * 255, x_vgg],
+                        hist = bypass_fit(self.srgan_model_, [x_generator[:self.batch_size, :, :, :], x_vgg],
                                                  [y_gan, y_vgg_dummy],
                                                  batch_size=self.batch_size, nb_epoch=1, verbose=0)
 
@@ -544,6 +627,7 @@ class SRGANNetwork:
 
                         if save_loss:
                             loss_history['discriminator_loss'].append(discriminator_loss)
+
                             loss_history['generator_loss'].append(generative_loss)
 
                         if prev_improvement == -1:
@@ -561,8 +645,8 @@ class SRGANNetwork:
                     if iteration % 1000 == 0 and iteration != 0:
                         print("Saving model weights.")
                         # Save predictive (SR network) weights
-                        self._save_model_weights(pre_train)
-                        self._save_loss_history(loss_history, pre_train, save_loss)
+                        self._save_model_weights(pre_train_srgan, pre_train_discriminator)
+                        self._save_loss_history(loss_history, pre_train_srgan, save_loss)
 
                     if iteration >= nb_images:
                         break
@@ -579,14 +663,16 @@ class SRGANNetwork:
 
         print("Finished training SRGAN network. Saving model weights.")
         # Save predictive (SR network) weights
-        self._save_model_weights(pre_train)
-        self._save_loss_history(loss_history, pre_train, save_loss)
+        self._save_model_weights(pre_train_srgan, pre_train_discriminator)
+        self._save_loss_history(loss_history, pre_train_srgan, save_loss)
 
-    def _save_model_weights(self, pre_train):
-        self.generative_model_.save_weights(self.generative_network.sr_weights_path, overwrite=True)
-        if not pre_train:
+    def _save_model_weights(self, pre_train_srgan, pre_train_discriminator):
+        if not pre_train_discriminator:
+            self.generative_model_.save_weights(self.generative_network.sr_weights_path, overwrite=True)
+
+        if not pre_train_srgan:
             # Save GAN (discriminative network) weights
-            self.discriminative_network.save_gan_weights(self.srgan_model_)
+            self.discriminative_network.save_gan_weights(self.discriminative_model_)
 
     def _save_loss_history(self, loss_history, pre_train, save_loss):
         if save_loss:
@@ -606,16 +692,23 @@ class SRGANNetwork:
 if __name__ == "__main__":
     from keras.utils.visualize_util import plot
     srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-    #srgan_model = srgan_network.build_srgan_model()
 
-    #srgan_model = srgan_network.build_srgan_pretrain_model()
-
+    #srgan_model = srgan_network.build_srgan_model(use_small_srgan=False, use_small_discriminator=False)
     #srgan_model.summary()
     #plot(srgan_model, to_file='SRGAN.png', show_shapes=True)
 
+    #srgan_model = srgan_network.build_srgan_pretrain_model()
+    #srgan_model.summary()
+    #plot(srgan_model, to_file='SRGAN PreTrain.png', show_shapes=True)
+
     coco_path = r"D:\Yue\Documents\Dataset\coco2014\train2014"
-    srgan_network.pre_train_model(coco_path, nb_epochs=1, nb_images=50000)
+
+    #srgan_network.pre_train_srgan(coco_path, nb_epochs=1, nb_images=50000)
     #srgan_network.train_full_model(coco_path, nb_images=50000, nb_epochs=1)
+
+    discriminator_network = srgan_network.build_discriminator_pretrain_model(use_small_discriminator=False)
+    srgan_network.pre_train_discriminator(coco_path, nb_images=50000, nb_epochs=1)
+
 
 
 
