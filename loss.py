@@ -65,7 +65,7 @@ class AdversarialLossRegularizer(ActivityRegularizer):
     def __call__(self, loss):
         gan_outputs = self.layer.output
 
-        loss += self.weight * K.sum(-K.log(gan_outputs))
+        loss += self.weight * K.mean(1 - K.softplus(gan_outputs))
         return loss
 
     def get_config(self):
