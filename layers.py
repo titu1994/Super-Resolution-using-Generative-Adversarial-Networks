@@ -34,18 +34,66 @@ class Normalize(Layer):
     def get_output_shape_for(self, input_shape):
         return input_shape
 
-class SubpixelUpscale(Layer):
 
-    def __init__(self, r=2):
-        super(SubpixelUpscale, self).__init__()
+''' Theano Backend function '''
 
-        self.r = r
+def depth_to_scale(x, scale, output_shape, dim_ordering=K.image_dim_ordering(), name=None):
+    ''' Uses phase shift algorithm [1] to convert channels/depth for spacial resolution '''
 
-    def build(self, input_shape):
-        pass
+    import theano.tensor as T
 
-    def call(self, x, mask=None):
-        pass
+    scale = int(scale)
 
-    def get_output_shape_for(self, input_shape):
-        pass
+    if dim_ordering == "tf":
+        x = x.transpose((0, 3, 1, 2))
+        out_row, out_col, out_channels = output_shape
+    else:
+        out_channels, out_row, out_col = output_shape
+
+    b, k, r, c = x.shape
+    out_b, out_k, out_r, out_c = b, k // (scale * scale), r * scale, c * scale
+
+    out = K.reshape(x, (out_b, out_k, out_r, out_c))
+
+    for channel in range(out_channels):
+        channel += 1
+
+        for i in range(out_row):
+            for j in range(out_col):
+                a = i // scale
+                b = j // scale
+                d = channel * scale * (j % scale) + channel * (i % scale)
+
+                T.set_subtensor(out[:, channel - 1, i, j], x[:, d, a, b], inplace=True)
+
+    if dim_ordering == 'tf':
+        out = out.transpose((0, 2, 3, 1))
+
+    return out
+
+
+'''
+Implementation is incomplete. Use lambda layer for now.
+'''
+
+# TODO: Complete SubpixelConvolution2D layer implementation
+# class SubpixelConvolution2D(Layer):
+#
+#     def __init__(self, r):
+#         super(SubpixelConvolution2D, self).__init__()
+#         self.r = r
+#
+#     def build(self, input_shape):
+#         pass
+#
+#     def call(self, x, mask=None):
+#         x = depth_to_scale(x, self.r, )
+#         return x
+#
+#     def get_output_shape_for(self, input_shape):
+#         if K.image_dim_ordering() == "th":
+#             b, k, r, c = input_shape
+#             return (b, k / (self.r * self.r), r * self.r, c * self.r)
+#         else:
+#             b, r, c, k = input_shape
+#             return (b, r * self.r, c * self.r, k / (self.r * self.r))
