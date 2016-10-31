@@ -2,8 +2,9 @@ from keras import backend as K
 from keras.regularizers import ActivityRegularizer
 import numpy as np
 
-
 dummy_loss_val = K.variable(0.0)
+
+softminus = lambda x: x - K.softplus(x)
 
 # Dummy loss function which simply returns 0
 # This is because we will be training the network using regularizers.
@@ -65,7 +66,7 @@ class AdversarialLossRegularizer(ActivityRegularizer):
     def __call__(self, loss):
         gan_outputs = self.layer.output
 
-        loss += self.weight * K.mean(1 - K.softplus(gan_outputs))
+        loss += self.weight * K.mean(1 - softminus(gan_outputs))
         return loss
 
     def get_config(self):
