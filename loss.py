@@ -30,7 +30,7 @@ def PSNRLoss(y_true, y_pred):
     However, since we are scaling our input, MAXp = 1. Therefore 20 * log10(1) = 0.
     Thus we remove that component completely and only compute the remaining MSE component.
     """
-    return -10. * np.log10(K.mean(K.square(y_pred - y_true)))
+    return 48.1308036087 - 10. * np.log10(K.mean(K.square(y_pred - y_true)))
 
 
 class ContentVGGRegularizer(ActivityRegularizer):
