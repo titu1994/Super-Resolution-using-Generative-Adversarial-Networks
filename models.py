@@ -222,7 +222,7 @@ class DiscriminatorNetwork:
 class GenerativeNetwork:
 
     def __init__(self, img_width=96, img_height=96, batch_size=16, small_model=False,
-                 content_weight=1, gan_weight=1e-3, tv_weight=2e-8):
+                 content_weight=1, gan_weight=5e2, tv_weight=2e5):
         self.img_width = img_width
         self.img_height = img_height
         self.batch_size = batch_size
