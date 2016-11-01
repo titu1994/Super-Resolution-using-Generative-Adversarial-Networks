@@ -96,8 +96,6 @@ def _test_loop(path, batch_size, datagen, img_height, img_width, iteration, larg
 
         output_image_batch = model.predict_on_batch(x_generator)
 
-        print("Output image max : ", output_image_batch[0].max())
-
         average_psnr = 0.0
         for x_i in range(batch_size):
             average_psnr += psnr(x[x_i], output_image_batch[x_i] / 255.)
