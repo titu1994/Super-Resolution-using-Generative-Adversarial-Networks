@@ -96,9 +96,11 @@ def _test_loop(path, batch_size, datagen, img_height, img_width, iteration, larg
 
         output_image_batch = model.predict_on_batch(x_generator)
 
+        print("Output image max : ", output_image_batch[0].max())
+
         average_psnr = 0.0
         for x_i in range(batch_size):
-            average_psnr += psnr(x[x_i], np.clip(output_image_batch[x_i] * 255, 0, 255) / 255.)
+            average_psnr += psnr(x[x_i], output_image_batch[x_i] / 255.)
             total_psnr += average_psnr
 
         average_psnr /= batch_size
@@ -117,7 +119,7 @@ def _test_loop(path, batch_size, datagen, img_height, img_width, iteration, larg
             val_x = val_x.transpose((1, 2, 0))
             val_x = np.clip(val_x, 0, 255).astype('uint8')
 
-            output_image = output_image_batch[x_i] * 255
+            output_image = output_image_batch[x_i]
             output_image = output_image.transpose((1, 2, 0))
             output_image = np.clip(output_image, 0, 255).astype('uint8')
 
@@ -199,6 +201,9 @@ class SRResNetTest:
                         print("Random Validation image..")
                         output_image_batch = self.model.predict_on_batch(x_generator)
 
+                        print("Pred Max / Min: %0.2f / %0.2f" % (output_image_batch.max(),
+                                                                 output_image_batch.min()))
+
                         average_psnr = 0.0
                         for x_i in range(self.batch_size):
                             average_psnr += psnr(x[x_i], output_image_batch[x_i] / 255.)
@@ -242,7 +247,7 @@ class SRResNetTest:
                         '''
                         continue
 
-                    hist = self.model.fit(x_generator, x, batch_size=self.batch_size, nb_epoch=1, verbose=0)
+                    hist = self.model.fit(x_generator, x * 255, batch_size=self.batch_size, nb_epoch=1, verbose=0)
                     psnr_loss_val = hist.history['PSNRLoss'][0]
 
                     if prev_improvement == -1:
@@ -258,6 +263,7 @@ class SRResNetTest:
                           "PSNR : %0.3f" % (iteration, nb_images, improvement, t2 - t1, psnr_loss_val))
 
                     if iteration % 1000 == 0 and iteration != 0:
+                        print("Saving weights")
                         self.model.save_weights(self.weights_path, overwrite=True)
 
                     if iteration >= nb_images:

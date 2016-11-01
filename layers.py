@@ -49,7 +49,7 @@ class Denormalize(Layer):
         pass
 
     def call(self, x, mask=None):
-        return (x + 0.5) * 255
+        return (x + 1) * 127.5
 
 
     def get_output_shape_for(self, input_shape):
