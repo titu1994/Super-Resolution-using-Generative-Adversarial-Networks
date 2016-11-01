@@ -241,11 +241,11 @@ class GenerativeNetwork:
 
     def create_sr_model(self, ip):
 
-        x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv1')(ip)
+        x = Convolution2D(64, 5, 5, activation='linear', border_mode='same', name='sr_res_conv1')(ip)
         x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_1')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr1')(x)
 
-        x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv2')(x)
+        x = Convolution2D(64, 5, 5, activation='linear', border_mode='same', name='sr_res_conv2')(x)
         x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_2')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr2')(x)
 
