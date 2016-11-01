@@ -289,12 +289,9 @@ class GenerativeNetwork:
         init = ip
 
         x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_1')(ip)
-
-        #x = BatchNormalization(axis=1, mode=self.mode, name="sr_res_batchnorm_" + str(id) + "_2")(x)
         x = LeakyReLU(alpha=0.25, name="sr_res_activation_" + str(id) + "_1")(x)
 
         x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_2')(x)
-        #x = BatchNormalization(axis=1, mode=self.mode, name="sr_res_batchnorm_" + str(id) + "_2")(x)
         x = LeakyReLU(alpha=1.0, name="sr_res_activation_" + str(id) + "_2")(x)
 
         m = merge([x, init], mode='sum', name="sr_res_merge_" + str(id))
