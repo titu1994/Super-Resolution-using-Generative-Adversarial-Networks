@@ -222,7 +222,7 @@ class DiscriminatorNetwork:
 class GenerativeNetwork:
 
     def __init__(self, img_width=96, img_height=96, batch_size=16, small_model=False,
-                 content_weight=1, gan_weight=5e2, tv_weight=2e5):
+                 content_weight=1, gan_weight=5e2, tv_weight=2e-8):
         self.img_width = img_width
         self.img_height = img_height
         self.batch_size = batch_size
@@ -232,6 +232,8 @@ class GenerativeNetwork:
         self.gan_weight = gan_weight
         self.tv_weight = tv_weight
 
+        self.mode = 2
+
         self.sr_res_layers = None
         self.sr_weights_path = "weights/SRGAN.h5"
 
@@ -239,10 +241,12 @@ class GenerativeNetwork:
 
     def create_sr_model(self, ip):
 
-        x = Convolution2D(64, 5, 5, border_mode='same', name='sr_res_conv1')(ip)
+        x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv1')(ip)
+        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_1')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr1')(x)
 
-        x = Convolution2D(64, 5, 5, border_mode='same', name='sr_res_conv2')(x)
+        x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv2')(x)
+        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_2')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr2')(x)
 
         nb_residual = 5 if self.small_model else 15
@@ -287,10 +291,12 @@ class GenerativeNetwork:
         init = ip
 
         x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_1')(ip)
+        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_' + str(id) + '_1')(x)
         x = LeakyReLU(alpha=0.25, name="sr_res_activation_" + str(id) + "_1")(x)
 
         x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_2')(x)
-        x = LeakyReLU(alpha=1.0, name="sr_res_activation_" + str(id) + "_2")(x)
+        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_' + str(id) + '_2')(x)
+        x = LeakyReLU(alpha=1., name="sr_res_activation_" + str(id) + "_2")(x)
 
         m = merge([x, init], mode='sum', name="sr_res_merge_" + str(id))
 
