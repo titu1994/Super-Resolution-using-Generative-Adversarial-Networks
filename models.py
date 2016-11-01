@@ -242,7 +242,7 @@ class GenerativeNetwork:
         x = Convolution2D(64, 5, 5, border_mode='same', name='sr_res_conv1')(ip)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr1')(x)
 
-        x = Convolution2D(64, 5, 5, border_mode='same', name='sr_res_conv1')(x)
+        x = Convolution2D(64, 5, 5, border_mode='same', name='sr_res_conv2')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr2')(x)
 
         nb_residual = 5 if self.small_model else 15
