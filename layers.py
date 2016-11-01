@@ -1,5 +1,6 @@
 from keras.engine.topology import Layer
 from keras import backend as K
+import itertools
 
 class Normalize(Layer):
     '''
@@ -21,12 +22,14 @@ class Normalize(Layer):
         else:
             if K.backend() == "theano":
                 import theano.tensor as T
+                x = (x + 0.5) * 255.
                 T.set_subtensor(x[:, 0, :, :], x[:, 0, :, :] - 103.939, inplace=True)
                 T.set_subtensor(x[:, 1, :, :], x[:, 1, :, :] - 116.779, inplace=True)
                 T.set_subtensor(x[:, 2, :, :], x[:, 2, :, :] - 123.680, inplace=True)
             else:
                 # No exact substitute for set_subtensor in tensorflow
                 # So we subtract an approximate value
+                x = (x + 0.5) * 255.
                 x = x - self.value
             return x
 
@@ -36,38 +39,19 @@ class Normalize(Layer):
 
 
 ''' Theano Backend function '''
-
-def depth_to_scale(x, scale, output_shape, dim_ordering=K.image_dim_ordering(), name=None):
+# TODO: Complete implementation for Tenforflow Backend
+def depth_to_scale(input, scale, channels, dim_ordering=K.image_dim_ordering(), name=None):
     ''' Uses phase shift algorithm [1] to convert channels/depth for spacial resolution '''
-
     import theano.tensor as T
 
-    scale = int(scale)
+    b, k, row, col = input.shape
+    output_shape = (b, channels, row * scale, col * scale)
 
-    if dim_ordering == "tf":
-        x = x.transpose((0, 3, 1, 2))
-        out_row, out_col, out_channels = output_shape
-    else:
-        out_channels, out_row, out_col = output_shape
+    out = T.zeros(output_shape)
+    r = scale
 
-    b, k, r, c = x.shape
-    out_b, out_k, out_r, out_c = b, k // (scale * scale), r * scale, c * scale
-
-    out = K.reshape(x, (out_b, out_k, out_r, out_c))
-
-    for channel in range(out_channels):
-        channel += 1
-
-        for i in range(out_row):
-            for j in range(out_col):
-                a = i // scale
-                b = j // scale
-                d = channel * scale * (j % scale) + channel * (i % scale)
-
-                T.set_subtensor(out[:, channel - 1, i, j], x[:, d, a, b], inplace=True)
-
-    if dim_ordering == 'tf':
-        out = out.transpose((0, 2, 3, 1))
+    for y, x in itertools.product(range(scale), repeat=2):
+        out = T.inc_subtensor(out[:, :, y::r, x::r], input[:, r * y + x :: r * r, :, :])
 
     return out
 
