@@ -201,7 +201,7 @@ class SRResNetTest:
 
                         average_psnr = 0.0
                         for x_i in range(self.batch_size):
-                            average_psnr += psnr(x[x_i], np.clip(output_image_batch[x_i] * 255, 0, 255) / 255.)
+                            average_psnr += psnr(x[x_i], output_image_batch[x_i] / 255.)
 
                         average_psnr /= self.batch_size
 
@@ -224,7 +224,7 @@ class SRResNetTest:
                             val_x = val_x.transpose((1, 2, 0))
                             val_x = np.clip(val_x, 0, 255).astype('uint8')
 
-                            output_image = output_image_batch[x_i] * 255
+                            output_image = output_image_batch[x_i]
                             output_image = output_image.transpose((1, 2, 0))
                             output_image = np.clip(output_image, 0, 255).astype('uint8')
 
@@ -277,13 +277,17 @@ class SRResNetTest:
 
 
 if __name__ == "__main__":
-    coco_path = r""
+    from keras.utils.visualize_util import plot
+
+    coco_path = r"D:\Yue\Documents\Dataset\coco2014\train2014"
 
     img_width = img_height = 96
 
     sr_resnet_test = SRResNetTest(img_width=img_width, img_height=img_height, batch_size=1)
-    sr_resnet_test.build_model(load_weights=True)
-    #sr_resnet_test.train_model(coco_path, nb_images=50000, nb_epochs=1)
+    sr_resnet_test.build_model(load_weights=False)
+    #plot(sr_resnet_test.model, to_file='sr_resnet.png', show_shapes=True)
+
+    sr_resnet_test.train_model(coco_path, nb_images=50000, nb_epochs=1)
 
     test_set5(sr_resnet_test.model, img_width=img_width, img_height=img_height)
     test_set14(sr_resnet_test.model, img_width=img_width, img_height=img_height)

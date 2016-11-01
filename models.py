@@ -1,14 +1,14 @@
 from keras import backend as K
 from keras.models import Model
-from keras.layers import Input, merge, BatchNormalization, Activation, LeakyReLU, Flatten, Dense
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, Deconvolution2D, AveragePooling2D
+from keras.layers import Input, merge, BatchNormalization, Activation, LeakyReLU, Flatten, Dense, Lambda
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, Deconvolution2D
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.data_utils import get_file
 
 from keras_training_ops import fit as bypass_fit
 
-from layers import Normalize
+from layers import Normalize, Denormalize, depth_to_scale
 from loss import AdversarialLossRegularizer, ContentVGGRegularizer, TVRegularizer, psnr, dummy_loss
 
 import os
@@ -45,7 +45,7 @@ class VGGNetwork:
         x = merge([x_in, true_X_input], mode='concat', concat_axis=0)
 
         # Normalize the inputs via custom VGG Normalization layer
-        #x = Normalize(name="normalize_vgg")(x)
+        x = Normalize(name="normalize_vgg")(x)
 
 
         # Begin adding the VGG layers
@@ -248,17 +248,42 @@ class GenerativeNetwork:
         for i in range(nb_residual):
             x = self._residual_block(x, i + 1)
 
-        x = Deconvolution2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2, 2), name='sr_res_deconv1',
-                            output_shape=(self.batch_size, 64, self.img_width * 2, self.img_height * 2))(x)
+        generator_channels = 64
+        upscale_channels = generator_channels * 4 # nb_generator_channels * (upscale * upscale) -- upscale = 2
 
-        x = Deconvolution2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2, 2), name='sr_res_deconv2',
-                            output_shape=(self.batch_size, 64, self.img_width * 4, self.img_height * 4))(x)
+        if K.image_dim_ordering() == "th":
+            output_shape1 = (generator_channels, self.img_width * 2, self.img_height * 2)
+            output_shape2 = (generator_channels, self.img_width * 4, self.img_height * 4)
+        else:
+            output_shape1 = (self.img_width * 2, self.img_height * 2, generator_channels)
+            output_shape2 = (self.img_width * 4, self.img_height * 4, generator_channels)
 
-        tv_regularizer = TVRegularizer(img_width=self.img_width * 4, img_height=self.img_height * 4,
-                                       weight=self.tv_weight)
-        x = Convolution2D(3, 3, 3, activation="linear", border_mode='same', name='sr_res_conv_final',
-                          activity_regularizer=tv_regularizer)(x)
-        #x = Denormalize(name='sr_res_output')(x)
+        x = Convolution2D(upscale_channels, 3, 3, activation="relu", border_mode='same', name='sr_res_upconv1')(x)
+        x = Lambda(lambda x: depth_to_scale(x, scale=2, channels=generator_channels), output_shape=output_shape1,
+                   name='sr_res_upscale1')(x)
+        x = Convolution2D(generator_channels, 3, 3, activation="relu", border_mode='same', name='sr_res_filter1')(x)
+
+        x = Convolution2D(upscale_channels, 3, 3, activation="relu", border_mode='same', name='sr_res_upconv2')(x)
+        x = Lambda(lambda x: depth_to_scale(x, scale=2, channels=generator_channels), output_shape=output_shape2,
+                   name='sr_res_upscale2')(x)
+        x = Convolution2D(generator_channels, 3, 3, activation="relu", border_mode='same', name='sr_res_filter2')(x)
+
+        tv_regularizer = TVRegularizer(img_width=self.img_width * 4, img_height=self.img_height * 4, weight=self.tv_weight)
+
+        x = Convolution2D(3, 5, 5, activation='tanh', border_mode='same', activity_regularizer=tv_regularizer,
+                          name='sr_res_conv_final')(x)
+
+        x = Denormalize()(x)
+
+        # x = Deconvolution2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2, 2), name='sr_res_deconv1',
+        #                     output_shape=(self.batch_size, 64, self.img_width * 2, self.img_height * 2))(x)
+        #
+        # x = Deconvolution2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2, 2), name='sr_res_deconv2',
+        #                     output_shape=(self.batch_size, 64, self.img_width * 4, self.img_height * 4))(x)
+
+
+        # x = Convolution2D(3, 3, 3, activation="linear", border_mode='same', name='sr_res_conv_final',
+        #                   activity_regularizer=tv_regularizer)(x)
 
         return x
 
