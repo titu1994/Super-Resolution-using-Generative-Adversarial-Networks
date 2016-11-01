@@ -22,16 +22,34 @@ class Normalize(Layer):
         else:
             if K.backend() == "theano":
                 import theano.tensor as T
-                x = (x + 0.5) * 255.
                 T.set_subtensor(x[:, 0, :, :], x[:, 0, :, :] - 103.939, inplace=True)
                 T.set_subtensor(x[:, 1, :, :], x[:, 1, :, :] - 116.779, inplace=True)
                 T.set_subtensor(x[:, 2, :, :], x[:, 2, :, :] - 123.680, inplace=True)
             else:
                 # No exact substitute for set_subtensor in tensorflow
                 # So we subtract an approximate value
-                x = (x + 0.5) * 255.
                 x = x - self.value
             return x
+
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape
+
+
+class Denormalize(Layer):
+    '''
+    Custom layer to subtract the outputs of previous layer by 120,
+    to normalize the inputs to the VGG and GAN networks.
+    '''
+
+    def __init__(self, **kwargs):
+        super(Denormalize, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        pass
+
+    def call(self, x, mask=None):
+        return (x + 0.5) * 255
 
 
     def get_output_shape_for(self, input_shape):
