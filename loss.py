@@ -17,10 +17,6 @@ def psnr(y_true, y_pred):
                                          " y_true shape = %s, y_pred shape = %s" % (str(y_true.shape),
                                                                                    str(y_pred.shape))
 
-    assert np.allclose(y_true.max(), y_pred.max(), rtol=1e-2), "y_true and y_pred max must be the same to calculate PSNR.\n" \
-                                         " y_true max = %s, y_pred max = %s" % (str(y_true.max()),
-                                                                                str(y_pred.max()))
-
     return -10. * np.log10(np.mean(np.square(y_pred - y_true)))
 
 def PSNRLoss(y_true, y_pred):
