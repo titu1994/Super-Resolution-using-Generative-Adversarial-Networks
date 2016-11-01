@@ -232,8 +232,6 @@ class GenerativeNetwork:
         self.gan_weight = gan_weight
         self.tv_weight = tv_weight
 
-        self.mode = 2
-
         self.sr_res_layers = None
         self.sr_weights_path = "weights/SRGAN.h5"
 
@@ -310,10 +308,10 @@ class GenerativeNetwork:
         if self.output_func is None:
             gen_output_layer = [layer for layer in srgan_model.layers
                                 if layer.name == "sr_res_conv_final"][0]
-            self.output_func = K.function([srgan_model.layers[0].input, K.learning_phase()],
+            self.output_func = K.function([srgan_model.layers[0].input],
                                           [gen_output_layer.output])
 
-        return self.output_func([input_img, 0])
+        return self.output_func([input_img])
 
 
 class SRGANNetwork:
