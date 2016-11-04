@@ -35,6 +35,8 @@ Note the difference between the *_network objects and *_model objects.
 set whether the model can be trained or not.
 - The *_models objects refer to the underlying Keras model. 
 
+**Note**: The training images need to be stored in a subdirectory. Assume the path to the images is `/path-to-dir/path-to-sub-dir/*.png`, then simply write the path as `coco_path = /path-to-dir`. If this does not work, try `coco_path = /path-to-dir/` with a trailing slash (/)
+
 To just create the pretrain model:
 ```
 srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
