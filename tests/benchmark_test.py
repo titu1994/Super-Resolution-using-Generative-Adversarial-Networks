@@ -1,10 +1,13 @@
-import models
-from loss import PSNRLoss, psnr
-
 from keras.layers import Input
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator
+
+import sys
+sys.path.append("..")
+
+import models
+from loss import PSNRLoss, psnr
 
 import os
 import time
