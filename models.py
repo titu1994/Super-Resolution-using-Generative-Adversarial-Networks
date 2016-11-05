@@ -192,46 +192,48 @@ class DiscriminatorNetwork:
         return model
 
     def save_gan_weights(self, model):
-        true_x_input = Input(shape=(3, self.img_width, self.img_height))
-
-        temp_gan_out = self.append_gan_network(true_x_input)
-        temp_gan_model = Model(true_x_input, temp_gan_out)
-
-        if self.gan_layers is None:
-            self.gan_layers = [layer for layer in model.layers
-                                if 'gan_' in layer.name]
-
-        temp_gan_layers = [layer for layer in temp_gan_model.layers]
-        temp_gan_layers = temp_gan_layers[1:] # First 2 are input layers, 3rd is merge layer. Not needed.
-
-        len_gan = len(self.gan_layers)
-        len_temp_gan = len(temp_gan_layers)
-        assert len_gan == len_temp_gan, "Number of layers in temporary GAN layer does not " \
-                                        "match the number of GAN layers in SRGAN model.\n" \
-                                        "Number of layers in temp_gan = %d while " \
-                                        "Number of layers in gan_layers = %d" % (len_gan, len_temp_gan)
-
-        for i, temp_gan_layer in enumerate(temp_gan_layers):
-            temp_gan_layer.set_weights(self.gan_layers[i].get_weights())
+        # true_x_input = Input(shape=(3, self.img_width, self.img_height))
+        #
+        # temp_gan_out = self.append_gan_network(true_x_input)
+        # temp_gan_model = Model(true_x_input, temp_gan_out)
+        #
+        # if self.gan_layers is None:
+        #     self.gan_layers = [layer for layer in model.layers
+        #                         if 'gan_' in layer.name]
+        #
+        # temp_gan_layers = [layer for layer in temp_gan_model.layers]
+        # temp_gan_layers = temp_gan_layers[1:] # First 2 are input layers, 3rd is merge layer. Not needed.
+        #
+        # len_gan = len(self.gan_layers)
+        # len_temp_gan = len(temp_gan_layers)
+        # assert len_gan == len_temp_gan, "Number of layers in temporary GAN layer does not " \
+        #                                 "match the number of GAN layers in SRGAN model.\n" \
+        #                                 "Number of layers in temp_gan = %d while " \
+        #                                 "Number of layers in gan_layers = %d" % (len_gan, len_temp_gan)
+        #
+        # for i, temp_gan_layer in enumerate(temp_gan_layers):
+        #     temp_gan_layer.set_weights(self.gan_layers[i].get_weights())
 
         print('GAN Weights are being saved.')
-        temp_gan_model.save_weights(self.weights_path, overwrite=True)
+        model.save_weights(self.weights_path, overwrite=True)
         print('GAN Weights saved.')
 
 
 class GenerativeNetwork:
 
-    def __init__(self, img_width=96, img_height=96, batch_size=16, small_model=False,
-                 content_weight=1, gan_weight=5e2, tv_weight=2e-8):
+    def __init__(self, img_width=96, img_height=96, batch_size=16, nb_upscales=2, small_model=False,
+                 content_weight=1, gan_weight=5e2, tv_weight=2e-8, gen_channels=64):
         self.img_width = img_width
         self.img_height = img_height
         self.batch_size = batch_size
         self.small_model = small_model
+        self.nb_scales = nb_upscales
 
         self.content_weight = content_weight
         self.gan_weight = gan_weight
         self.tv_weight = tv_weight
 
+        self.filters = gen_channels
         self.mode = 2
 
         self.sr_res_layers = None
@@ -241,11 +243,11 @@ class GenerativeNetwork:
 
     def create_sr_model(self, ip):
 
-        x = Convolution2D(64, 5, 5, activation='linear', border_mode='same', name='sr_res_conv1')(ip)
+        x = Convolution2D(self.filters, 5, 5, activation='linear', border_mode='same', name='sr_res_conv1')(ip)
         x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_1')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr1')(x)
 
-        x = Convolution2D(64, 5, 5, activation='linear', border_mode='same', name='sr_res_conv2')(x)
+        x = Convolution2D(self.filters, 5, 5, activation='linear', border_mode='same', name='sr_res_conv2')(x)
         x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_2')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr2')(x)
 
@@ -254,31 +256,12 @@ class GenerativeNetwork:
         for i in range(nb_residual):
             x = self._residual_block(x, i + 1)
 
-        generator_channels = 64
-        upscale_channels = generator_channels * 4 # nb_generator_channels * (upscale * upscale) -- upscale = 2
+        for scale in range(self.nb_scales):
+            x = self._upscale_block(x, scale + 1)
 
-        if K.image_dim_ordering() == "th":
-            output_shape1 = (generator_channels, self.img_width * 2, self.img_height * 2)
-            output_shape2 = (generator_channels, self.img_width * 4, self.img_height * 4)
-        else:
-            output_shape1 = (self.img_width * 2, self.img_height * 2, generator_channels)
-            output_shape2 = (self.img_width * 4, self.img_height * 4, generator_channels)
-
-        x = Convolution2D(upscale_channels, 3, 3, activation="linear", border_mode='same', name='sr_res_upconv1')(x)
-        x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_1_1')(x)
-        x = Lambda(lambda x: depth_to_scale(x, scale=2, channels=generator_channels), output_shape=output_shape1,
-                   name='sr_res_upscale1')(x)
-        x = Convolution2D(generator_channels, 3, 3, activation="linear", border_mode='same', name='sr_res_filter1')(x)
-        x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_1_2')(x)
-
-        x = Convolution2D(upscale_channels, 3, 3, activation="linear", border_mode='same', name='sr_res_upconv2')(x)
-        x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_2_1')(x)
-        x = Lambda(lambda x: depth_to_scale(x, scale=2, channels=generator_channels), output_shape=output_shape2,
-                   name='sr_res_upscale2')(x)
-        x = Convolution2D(generator_channels, 3, 3, activation="linear", border_mode='same', name='sr_res_filter2')(x)
-        x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_2_2')(x)
-
-        tv_regularizer = TVRegularizer(img_width=self.img_width * 4, img_height=self.img_height * 4, weight=self.tv_weight)
+        scale = 2 ** self.nb_scales
+        tv_regularizer = TVRegularizer(img_width=self.img_width * scale, img_height=self.img_height * scale,
+                                       weight=self.tv_weight)
 
         x = Convolution2D(3, 5, 5, activation='tanh', border_mode='same', activity_regularizer=tv_regularizer,
                           name='sr_res_conv_final')(x)
@@ -290,17 +273,35 @@ class GenerativeNetwork:
     def _residual_block(self, ip, id):
         init = ip
 
-        x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_1')(ip)
+        x = Convolution2D(self.filters, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_1')(ip)
         x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_' + str(id) + '_1')(x)
         x = LeakyReLU(alpha=0.25, name="sr_res_activation_" + str(id) + "_1")(x)
 
-        x = Convolution2D(64, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_2')(x)
+        x = Convolution2D(self.filters, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_2')(x)
         x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_' + str(id) + '_2')(x)
         x = LeakyReLU(alpha=1., name="sr_res_activation_" + str(id) + "_2")(x)
 
         m = merge([x, init], mode='sum', name="sr_res_merge_" + str(id))
 
         return m
+
+    def _upscale_block(self, ip, id):
+        init = ip
+        scale = 2 ** id
+
+        if K.image_dim_ordering() == "th":
+            output_shape = (self.filters, self.img_width * scale, self.img_height * scale)
+        else:
+            output_shape = (self.img_width * scale, self.img_height * scale, self.filters)
+
+        x = Convolution2D(256, 3, 3, activation="linear", border_mode='same', name='sr_res_upconv1_%d' % id)(init)
+        x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_%d_1_1' % id)(x)
+        x = Lambda(lambda x: depth_to_scale(x, scale=2, channels=self.filters), output_shape=output_shape,
+                   name='sr_res_upscale1_%d' % id)(x)
+        x = Convolution2D(256, 3, 3, activation="linear", border_mode='same', name='sr_res_filter1_%d' % id)(x)
+        x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_%d_1_2' % id)(x)
+
+        return x
 
     def set_trainable(self, model, value=True):
         if self.sr_res_layers is None:
@@ -448,7 +449,7 @@ class SRGANNetwork:
 
         self._train_model(image_dir, nb_images, nb_epochs, load_generative_weights=True, load_discriminator_weights=True)
 
-    def _train_model(self, image_dir, nb_images=50000, nb_epochs=20, pre_train_srgan=False,
+    def _train_model(self, image_dir, nb_images=80000, nb_epochs=10, pre_train_srgan=False,
                      pre_train_discriminator=False, load_generative_weights=False, load_discriminator_weights=False,
                      save_loss=True):
 
@@ -714,24 +715,27 @@ class SRGANNetwork:
 
 
 if __name__ == "__main__":
-    from keras.utils.visualize_util import plot
-    srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-
-    #srgan_model = srgan_network.build_srgan_model(use_small_srgan=False, use_small_discriminator=False)
-    #srgan_model.summary()
-    #plot(srgan_model, to_file='SRGAN.png', show_shapes=True)
-
-    #srgan_model = srgan_network.build_srgan_pretrain_model()
-    #srgan_model.summary()
-    #plot(srgan_model, to_file='SRGAN PreTrain.png', show_shapes=True)
-
+    # Path to MS COCO dataset
     coco_path = r"D:\Yue\Documents\Dataset\coco2014\train2014"
 
-    #srgan_network.pre_train_srgan(coco_path, nb_epochs=1, nb_images=50000)
-    #srgan_network.train_full_model(coco_path, nb_images=50000, nb_epochs=1)
+    '''
+    Base Network manager for the SRGAN model
 
-    discriminator_network = srgan_network.build_discriminator_pretrain_model(use_small_discriminator=False)
+    Width / Height = 32 to reduce the memory requirement for the discriminator.
+
+    Batch size = 1 is slower, but uses the least amount of gpu memory, and also acts as
+    Instance Normalization (batch norm with 1 input image) which speeds up training slightly.
+    '''
+    srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
+
+    # Pretrain the SRGAN network
+    srgan_network.pre_train_srgan(coco_path, nb_images=50000, nb_epochs=1)
+
+    # Pretrain the discriminator network
     srgan_network.pre_train_discriminator(coco_path, nb_images=50000, nb_epochs=1)
+
+    # Fully train the SRGAN with VGG loss and Discriminator loss
+    srgan_network.train_full_model(coco_path, nb_images=80000, nb_epochs=10)
 
 
 
