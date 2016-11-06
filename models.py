@@ -199,28 +199,6 @@ class DiscriminatorNetwork:
         return model
 
     def save_gan_weights(self, model):
-        # true_x_input = Input(shape=(3, self.img_width, self.img_height))
-        #
-        # temp_gan_out = self.append_gan_network(true_x_input)
-        # temp_gan_model = Model(true_x_input, temp_gan_out)
-        #
-        # if self.gan_layers is None:
-        #     self.gan_layers = [layer for layer in model.layers
-        #                         if 'gan_' in layer.name]
-        #
-        # temp_gan_layers = [layer for layer in temp_gan_model.layers]
-        # temp_gan_layers = temp_gan_layers[1:] # First 2 are input layers, 3rd is merge layer. Not needed.
-        #
-        # len_gan = len(self.gan_layers)
-        # len_temp_gan = len(temp_gan_layers)
-        # assert len_gan == len_temp_gan, "Number of layers in temporary GAN layer does not " \
-        #                                 "match the number of GAN layers in SRGAN model.\n" \
-        #                                 "Number of layers in temp_gan = %d while " \
-        #                                 "Number of layers in gan_layers = %d" % (len_gan, len_temp_gan)
-        #
-        # for i, temp_gan_layer in enumerate(temp_gan_layers):
-        #     temp_gan_layer.set_weights(self.gan_layers[i].get_weights())
-
         print('GAN Weights are being saved.')
         model.save_weights(self.weights_path, overwrite=True)
         print('GAN Weights saved.')
