@@ -56,7 +56,6 @@ class Denormalize(Layer):
 
 
 ''' Theano Backend function '''
-# TODO: Complete implementation for Tenforflow Backend
 def depth_to_scale_th(input, scale, channels):
     ''' Uses phase shift algorithm [1] to convert channels/depth for spacial resolution '''
     import theano.tensor as T
@@ -105,7 +104,6 @@ def depth_to_scale_tf(input, scale, channels):
 Implementation is incomplete. Use lambda layer for now.
 '''
 
-# TODO: Complete SubPixelUpscaling layer implementation
 class SubPixelUpscaling(Layer):
 
     def __init__(self, r, channels, **kwargs):
