@@ -160,8 +160,12 @@ class SRResNetTest:
             try:
                 self.model.load_weights(self.weights_path)
                 print("SR ResNet model weights loaded.")
-            except:
-                print("Weight for SR ResNet model not found. Cannot load weights.")
+            except Exception:
+                print("Weight for SR ResNet model not found or are incorrect size. Cannot load weights.")
+
+                response = input("Continue without loading weights? 'y' or 'n' ")
+                if response == 'n':
+                    exit()
 
         return self.model
 
@@ -288,7 +292,7 @@ if __name__ == "__main__":
 
     coco_path = r"D:\Yue\Documents\Dataset\coco2014\train2014"
 
-    img_width = img_height = 96
+    img_width = img_height = 64
 
     sr_resnet_test = SRResNetTest(img_width=img_width, img_height=img_height, batch_size=1)
     sr_resnet_test.build_model(load_weights=False)

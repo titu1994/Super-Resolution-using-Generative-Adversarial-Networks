@@ -8,7 +8,7 @@ from keras.utils.data_utils import get_file
 
 from keras_training_ops import fit as bypass_fit
 
-from layers import Normalize, Denormalize, depth_to_scale
+from layers import Normalize, Denormalize, depth_to_scale, SubpixelConvolution2D
 from loss import AdversarialLossRegularizer, ContentVGGRegularizer, TVRegularizer, psnr, dummy_loss
 
 import os
@@ -279,7 +279,7 @@ class GenerativeNetwork:
 
         x = Convolution2D(self.filters, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_2')(x)
         x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_' + str(id) + '_2')(x)
-        x = LeakyReLU(alpha=1., name="sr_res_activation_" + str(id) + "_2")(x)
+        x = LeakyReLU(alpha=0.3, name="sr_res_activation_" + str(id) + "_2")(x)
 
         m = merge([x, init], mode='sum', name="sr_res_merge_" + str(id))
 
@@ -287,17 +287,10 @@ class GenerativeNetwork:
 
     def _upscale_block(self, ip, id):
         init = ip
-        scale = 2 ** id
-
-        if K.image_dim_ordering() == "th":
-            output_shape = (self.filters, self.img_width * scale, self.img_height * scale)
-        else:
-            output_shape = (self.img_width * scale, self.img_height * scale, self.filters)
 
         x = Convolution2D(256, 3, 3, activation="linear", border_mode='same', name='sr_res_upconv1_%d' % id)(init)
         x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_%d_1_1' % id)(x)
-        x = Lambda(lambda x: depth_to_scale(x, scale=2, channels=self.filters), output_shape=output_shape,
-                   name='sr_res_upscale1_%d' % id)(x)
+        x = SubpixelConvolution2D(r=2, channels=self.filters, name='sr_res_upscale1_%d' % id)(x)
         x = Convolution2D(256, 3, 3, activation="linear", border_mode='same', name='sr_res_filter1_%d' % id)(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_%d_1_2' % id)(x)
 
