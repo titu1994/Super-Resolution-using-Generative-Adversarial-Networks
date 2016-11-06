@@ -79,23 +79,25 @@ Implementation is incomplete. Use lambda layer for now.
 '''
 
 # TODO: Complete SubpixelConvolution2D layer implementation
-# class SubpixelConvolution2D(Layer):
-#
-#     def __init__(self, r):
-#         super(SubpixelConvolution2D, self).__init__()
-#         self.r = r
-#
-#     def build(self, input_shape):
-#         pass
-#
-#     def call(self, x, mask=None):
-#         x = depth_to_scale(x, self.r, )
-#         return x
-#
-#     def get_output_shape_for(self, input_shape):
-#         if K.image_dim_ordering() == "th":
-#             b, k, r, c = input_shape
-#             return (b, k / (self.r * self.r), r * self.r, c * self.r)
-#         else:
-#             b, r, c, k = input_shape
-#             return (b, r * self.r, c * self.r, k / (self.r * self.r))
+class SubpixelConvolution2D(Layer):
+
+    def __init__(self, r, channels):
+        super(SubpixelConvolution2D, self).__init__()
+
+        self.r = r
+        self.channels = channels
+
+    def build(self, input_shape):
+        pass
+
+    def call(self, x, mask=None):
+        y = depth_to_scale(x, self.r, self.channels)
+        return y
+
+    def get_output_shape_for(self, input_shape):
+        if K.image_dim_ordering() == "th":
+            b, k, r, c = input_shape
+            return (b, self.channels, r * self.r, c * self.r)
+        else:
+            b, r, c, k = input_shape
+            return (b, r * self.r, c * self.r, self.channels)
