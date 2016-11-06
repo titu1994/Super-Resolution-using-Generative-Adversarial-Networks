@@ -8,7 +8,7 @@ from keras.utils.data_utils import get_file
 
 from keras_training_ops import fit as bypass_fit
 
-from layers import Normalize, Denormalize, SubpixelConvolution2D
+from layers import Normalize, Denormalize, SubPixelUpscaling
 from loss import AdversarialLossRegularizer, ContentVGGRegularizer, TVRegularizer, psnr, dummy_loss
 
 import os
@@ -294,7 +294,7 @@ class GenerativeNetwork:
 
         x = Convolution2D(256, 3, 3, activation="linear", border_mode='same', name='sr_res_upconv1_%d' % id)(init)
         x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_%d_1_1' % id)(x)
-        x = SubpixelConvolution2D(r=2, channels=self.filters, name='sr_res_upscale1_%d' % id)(x)
+        x = SubPixelUpscaling(r=2, channels=self.filters, name='sr_res_upscale1_%d' % id)(x)
         x = Convolution2D(256, 3, 3, activation="linear", border_mode='same', name='sr_res_filter1_%d' % id)(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_up_lr_%d_1_2' % id)(x)
 

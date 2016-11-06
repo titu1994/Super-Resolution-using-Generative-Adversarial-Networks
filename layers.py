@@ -51,14 +51,13 @@ class Denormalize(Layer):
     def call(self, x, mask=None):
         return (x + 1) * 127.5
 
-
     def get_output_shape_for(self, input_shape):
         return input_shape
 
 
 ''' Theano Backend function '''
 # TODO: Complete implementation for Tenforflow Backend
-def depth_to_scale(input, scale, channels, dim_ordering=K.image_dim_ordering(), name=None):
+def depth_to_scale_th(input, scale, channels):
     ''' Uses phase shift algorithm [1] to convert channels/depth for spacial resolution '''
     import theano.tensor as T
 
@@ -74,15 +73,43 @@ def depth_to_scale(input, scale, channels, dim_ordering=K.image_dim_ordering(), 
     return out
 
 
+''' Tensorflow Backend Function '''
+def depth_to_scale_tf(input, scale, channels):
+    try:
+        import tensorflow as tf
+    except ImportError:
+        print("Could not import Tensorflow for depth_to_scale operation. Please install Tensorflow or switch to Theano backend")
+        exit()
+
+    def _phase_shift(I, r):
+        ''' Function copied as is from https://github.com/Tetrachrome/subpixel/blob/master/subpixel.py'''
+
+        bsize, a, b, c = I.get_shape().as_list()
+        bsize = tf.shape(I)[0]  # Handling Dimension(None) type for undefined batch dim
+        X = tf.reshape(I, (bsize, a, b, r, r))
+        X = tf.transpose(X, (0, 1, 2, 4, 3))  # bsize, a, b, 1, 1
+        X = tf.split(1, a, X)  # a, [bsize, b, r, r]
+        X = tf.concat(2, [tf.squeeze(x) for x in X])  # bsize, b, a*r, r
+        X = tf.split(1, b, X)  # b, [bsize, a*r, r]
+        X = tf.concat(2, [tf.squeeze(x) for x in X])  # bsize, a*r, b*r
+        return tf.reshape(X, (bsize, a * r, b * r, 1))
+
+    if channels > 1:
+        Xc = tf.split(3, 3, input)
+        X = tf.concat(3, [_phase_shift(x, scale) for x in Xc])
+    else:
+        X = _phase_shift(input, scale)
+    return X
+
 '''
 Implementation is incomplete. Use lambda layer for now.
 '''
 
-# TODO: Complete SubpixelConvolution2D layer implementation
-class SubpixelConvolution2D(Layer):
+# TODO: Complete SubPixelUpscaling layer implementation
+class SubPixelUpscaling(Layer):
 
     def __init__(self, r, channels, **kwargs):
-        super(SubpixelConvolution2D, self).__init__(**kwargs)
+        super(SubPixelUpscaling, self).__init__(**kwargs)
 
         self.r = r
         self.channels = channels
@@ -91,7 +118,10 @@ class SubpixelConvolution2D(Layer):
         pass
 
     def call(self, x, mask=None):
-        y = depth_to_scale(x, self.r, self.channels)
+        if K.backend() == "theano":
+            y = depth_to_scale_th(x, self.r, self.channels)
+        else:
+            y = depth_to_scale_tf(x, self.r, self.channels)
         return y
 
     def get_output_shape_for(self, input_shape):
