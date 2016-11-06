@@ -335,9 +335,8 @@ class SRGANNetwork:
         gan_output = self.discriminative_network.append_gan_network(ip_gan)
         self.discriminative_model_ = Model(ip_gan, gan_output)
 
-        generator_output = self.generative_model_(ip)
-        gan_output = self.discriminative_model_(generator_output)
-        vgg_output = self.vgg_network.append_vgg_network(generator_output, ip_vgg)
+        gan_output = self.discriminative_model_(self.generative_model_.output)
+        vgg_output = self.vgg_network.append_vgg_network(self.generative_model_.output, ip_vgg)
 
         self.srgan_model_ = Model(input=[ip, ip_vgg],
                                   output=[gan_output, vgg_output])
@@ -345,9 +344,11 @@ class SRGANNetwork:
         self.vgg_network.load_vgg_weight(self.srgan_model_)
 
         srgan_optimizer = Adam(lr=1e-4)
+        generator_optimizer = Adam(lr=1e-4)
+        discriminator_optimizer = Adam(lr=1e-4)
 
-        self.generative_model_.compile(srgan_optimizer, dummy_loss)
-        self.discriminative_model_.compile(srgan_optimizer, loss='binary_crossentropy', metrics=['acc'])
+        self.generative_model_.compile(generator_optimizer, dummy_loss)
+        self.discriminative_model_.compile(discriminator_optimizer, loss='binary_crossentropy', metrics=['acc'])
         self.srgan_model_.compile(srgan_optimizer, dummy_loss)
 
         return self.srgan_model_
@@ -377,9 +378,11 @@ class SRGANNetwork:
         self.srgan_model_ = Model(input=ip, output=gan_output)
 
         srgan_optimizer = Adam(lr=1e-4)
+        generator_optimizer = Adam(lr=1e-4)
+        discriminator_optimizer = Adam(lr=1e-4)
 
-        self.generative_model_.compile(srgan_optimizer, loss='mse')
-        self.discriminative_model_.compile(srgan_optimizer, loss='binary_crossentropy', metrics=['acc'])
+        self.generative_model_.compile(generator_optimizer, loss='mse')
+        self.discriminative_model_.compile(discriminator_optimizer, loss='binary_crossentropy', metrics=['acc'])
         self.srgan_model_.compile(srgan_optimizer, loss='binary_crossentropy', metrics=['acc'])
 
         return self.discriminative_model_
@@ -408,7 +411,9 @@ class SRGANNetwork:
         self.generative_network.set_trainable(self.srgan_model_, value=True)
 
         srgan_optimizer = Adam(lr=1e-4)
-        self.generative_model_.compile(srgan_optimizer, dummy_loss)
+        generator_optimizer = Adam(lr=1e-4)
+
+        self.generative_model_.compile(generator_optimizer, dummy_loss)
         self.srgan_model_.compile(srgan_optimizer, dummy_loss)
 
         return self.srgan_model_
@@ -440,7 +445,7 @@ class SRGANNetwork:
 
         if load_generative_weights:
             self.generative_model_.load_weights(self.generative_network.sr_weights_path)
-            print("Loaded Generator weights")
+            print("Generator weights loaded.")
 
         if load_discriminator_weights:
             self.discriminative_network.load_gan_weights(self.srgan_model_)
@@ -609,7 +614,7 @@ class SRGANNetwork:
                         #                          [y_gan, y_vgg_dummy],
                         #                          batch_size=self.batch_size, nb_epoch=1, verbose=0)
 
-                        X_pred = self.generative_model_.predict(x, self.batch_size)
+                        X_pred = self.generative_model_.predict(x_generator, self.batch_size)
                         X_pred /= 255
 
                         X = np.concatenate((X_pred, x))
@@ -625,7 +630,7 @@ class SRGANNetwork:
                         self.generative_network.set_trainable(self.srgan_model_, value=True)
 
                         # Use custom bypass_fit to bypass the check for same input and output batch size
-                        hist = bypass_fit(self.srgan_model_, [x_generator[:self.batch_size, :, :, :], x_vgg],
+                        hist = bypass_fit(self.srgan_model_, [x_generator, x_vgg],
                                                  [y_gan, y_vgg_dummy],
                                                  batch_size=self.batch_size, nb_epoch=1, verbose=0)
 
@@ -697,6 +702,8 @@ class SRGANNetwork:
 
 
 if __name__ == "__main__":
+    from keras.utils.visualize_util import plot
+
     # Path to MS COCO dataset
     coco_path = r"D:\Yue\Documents\Dataset\coco2014\train2014"
 
@@ -709,15 +716,17 @@ if __name__ == "__main__":
     Instance Normalization (batch norm with 1 input image) which speeds up training slightly.
     '''
     srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
+    srgan_network.build_srgan_model()
+    plot(srgan_network.srgan_model_, 'SRGAN.png', show_shapes=True)
 
     # Pretrain the SRGAN network
-    srgan_network.pre_train_srgan(coco_path, nb_images=50000, nb_epochs=1)
+    #srgan_network.pre_train_srgan(coco_path, nb_images=50000, nb_epochs=1)
 
     # Pretrain the discriminator network
-    srgan_network.pre_train_discriminator(coco_path, nb_images=50000, nb_epochs=1)
+    #srgan_network.pre_train_discriminator(coco_path, nb_images=50000, nb_epochs=1)
 
     # Fully train the SRGAN with VGG loss and Discriminator loss
-    srgan_network.train_full_model(coco_path, nb_images=80000, nb_epochs=10)
+    srgan_network.train_full_model(coco_path, nb_images=80000, nb_epochs=5)
 
 
 
