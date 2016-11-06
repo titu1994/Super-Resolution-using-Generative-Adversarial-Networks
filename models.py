@@ -184,7 +184,7 @@ class DiscriminatorNetwork:
         f = h5py.File(self.weights_path)
 
         layer_names = [name for name in f.attrs['layer_names']]
-        layer_names = layer_names[3:] # First 2 are inputs, and 3rd is merge. Not needed.
+        layer_names = layer_names[1:] # First is an input layer. Not needed.
 
         if self.gan_layers is None:
             self.gan_layers = [layer for layer in model.layers
