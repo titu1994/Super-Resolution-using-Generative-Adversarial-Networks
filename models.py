@@ -323,10 +323,11 @@ class GenerativeNetwork:
 
 class SRGANNetwork:
 
-    def __init__(self, img_width=96, img_height=96, batch_size=16):
+    def __init__(self, img_width=96, img_height=96, batch_size=16, nb_scales=2):
         self.img_width = img_width
         self.img_height = img_height
         self.batch_size = batch_size
+        self.nb_scales = nb_scales
 
         self.discriminative_network = None # type: DiscriminatorNetwork
         self.generative_network = None # type: GenerativeNetwork
@@ -340,7 +341,8 @@ class SRGANNetwork:
         large_width = self.img_width * 4
         large_height = self.img_height * 4
 
-        self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, use_small_srgan)
+        self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, nb_upscales=self.nb_scales,
+                                                    small_model=use_small_srgan)
         self.discriminative_network = DiscriminatorNetwork(large_width, large_height,
                                                            small_model=use_small_discriminator)
         self.vgg_network = VGGNetwork(large_width, large_height)
@@ -376,7 +378,8 @@ class SRGANNetwork:
         large_width = self.img_width * 4
         large_height = self.img_height * 4
 
-        self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, use_small_srgan)
+        self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, self.nb_scales,
+                                                    use_small_srgan)
         self.discriminative_network = DiscriminatorNetwork(large_width, large_height,
                                                            small_model=use_small_discriminator)
 
@@ -407,7 +410,8 @@ class SRGANNetwork:
         large_width = self.img_width * 4
         large_height = self.img_height * 4
 
-        self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, use_small_srgan)
+        self.generative_network = GenerativeNetwork(self.img_width, self.img_height, self.batch_size, self.nb_scales,
+                                                    use_small_srgan)
         self.vgg_network = VGGNetwork(large_width, large_height)
 
         ip = Input(shape=(3, self.img_width, self.img_height), name='x_generator')
