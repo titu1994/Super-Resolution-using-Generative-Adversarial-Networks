@@ -1,6 +1,6 @@
 from keras import backend as K
 from keras.models import Model
-from keras.layers import Input, merge, BatchNormalization, LeakyReLU, Flatten, Dense, Lambda
+from keras.layers import Input, merge, BatchNormalization, LeakyReLU, Flatten, Dense
 from keras.layers.convolutional import Convolution2D, MaxPooling2D
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator
@@ -8,7 +8,7 @@ from keras.utils.data_utils import get_file
 
 from keras_training_ops import fit as bypass_fit
 
-from layers import Normalize, Denormalize, depth_to_scale, SubpixelConvolution2D
+from layers import Normalize, Denormalize, SubpixelConvolution2D
 from loss import AdversarialLossRegularizer, ContentVGGRegularizer, TVRegularizer, psnr, dummy_loss
 
 import os
@@ -26,6 +26,11 @@ if not os.path.exists("weights/"):
 
 if not os.path.exists("val_images/"):
     os.makedirs("val_images/")
+
+if K.image_dim_ordering() == "th":
+    channel_axis = 1
+else:
+    channel_axis = -1
 
 class VGGNetwork:
     '''
@@ -46,7 +51,6 @@ class VGGNetwork:
 
         # Normalize the inputs via custom VGG Normalization layer
         x = Normalize(name="normalize_vgg")(x)
-
 
         # Begin adding the VGG layers
         x = Convolution2D(64, 3, 3, activation='relu', name='vgg_conv1_1', border_mode='same')(x)
@@ -140,7 +144,7 @@ class DiscriminatorNetwork:
 
         x = Convolution2D(64, self.k, self.k, border_mode='same', name='gan_conv1_2', subsample=(2, 2))(x)
         x = LeakyReLU(0.3, name='gan_lrelu1_2')(x)
-        x = BatchNormalization(mode=self.mode, axis=1, name='gan_batchnorm1_1')(x)
+        x = BatchNormalization(mode=self.mode, axis=channel_axis, name='gan_batchnorm1_1')(x)
 
         filters = [128, 256] if self.small_model else [128, 256, 512]
 
@@ -151,7 +155,7 @@ class DiscriminatorNetwork:
                 x = Convolution2D(nb_filters, self.k, self.k, border_mode='same', subsample=subsample,
                                   name='gan_conv%d_%d' % (i + 2, j + 1))(x)
                 x = LeakyReLU(0.3, name='gan_lrelu_%d_%d' % (i + 2, j + 1))(x)
-                x = BatchNormalization(mode=self.mode, axis=1, name='gan_batchnorm%d_%d' % (i + 2, j + 1))(x)
+                x = BatchNormalization(mode=self.mode, axis=channel_axis, name='gan_batchnorm%d_%d' % (i + 2, j + 1))(x)
 
         x = Flatten(name='gan_flatten')(x)
 
@@ -244,11 +248,11 @@ class GenerativeNetwork:
     def create_sr_model(self, ip):
 
         x = Convolution2D(self.filters, 5, 5, activation='linear', border_mode='same', name='sr_res_conv1')(ip)
-        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_1')(x)
+        x = BatchNormalization(axis=channel_axis, mode=self.mode, name='sr_res_bn_1')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr1')(x)
 
         x = Convolution2D(self.filters, 5, 5, activation='linear', border_mode='same', name='sr_res_conv2')(x)
-        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_2')(x)
+        x = BatchNormalization(axis=channel_axis, mode=self.mode, name='sr_res_bn_2')(x)
         x = LeakyReLU(alpha=0.25, name='sr_res_lr2')(x)
 
         nb_residual = 5 if self.small_model else 15
@@ -274,11 +278,11 @@ class GenerativeNetwork:
         init = ip
 
         x = Convolution2D(self.filters, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_1')(ip)
-        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_' + str(id) + '_1')(x)
+        x = BatchNormalization(axis=channel_axis, mode=self.mode, name='sr_res_bn_' + str(id) + '_1')(x)
         x = LeakyReLU(alpha=0.25, name="sr_res_activation_" + str(id) + "_1")(x)
 
         x = Convolution2D(self.filters, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_2')(x)
-        x = BatchNormalization(axis=1, mode=self.mode, name='sr_res_bn_' + str(id) + '_2')(x)
+        x = BatchNormalization(axis=channel_axis, mode=self.mode, name='sr_res_bn_' + str(id) + '_2')(x)
         x = LeakyReLU(alpha=0.3, name="sr_res_activation_" + str(id) + "_2")(x)
 
         m = merge([x, init], mode='sum', name="sr_res_merge_" + str(id))
