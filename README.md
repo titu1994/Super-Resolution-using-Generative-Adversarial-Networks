@@ -93,7 +93,6 @@ Some things I am currently trying out:
 - [ ] Fix the pixel grid formation when upscaling the image.
 - [x] Replacing the 2 deconv layers for a Sub-Pixel Convolution layer. 
 - [ ] Improve docs & instructions
-- [ ] 
 
 # Discussion
 There is an ongoing discussion at https://github.com/fchollet/keras/issues/3940 where I detail some of the outputs and attempts to correct 
