@@ -81,8 +81,8 @@ Implementation is incomplete. Use lambda layer for now.
 # TODO: Complete SubpixelConvolution2D layer implementation
 class SubpixelConvolution2D(Layer):
 
-    def __init__(self, r, channels):
-        super(SubpixelConvolution2D, self).__init__()
+    def __init__(self, r, channels, **kwargs):
+        super(SubpixelConvolution2D, self).__init__(**kwargs)
 
         self.r = r
         self.channels = channels
