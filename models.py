@@ -20,6 +20,7 @@ from scipy.misc import imresize, imsave
 from scipy.ndimage.filters import gaussian_filter
 
 THEANO_WEIGHTS_PATH_NO_TOP = r'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_th_dim_ordering_th_kernels_notop.h5'
+TF_WEIGHTS_PATH_NO_TOP = r"https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5"
 
 if not os.path.exists("weights/"):
     os.makedirs("weights/")
@@ -95,10 +96,12 @@ class VGGNetwork:
 
     def load_vgg_weight(self, model):
         # Loading VGG 16 weights
-        weights_name = "vgg16_weights_th_dim_ordering_th_kernels_notop.h5"
-        weights_path = THEANO_WEIGHTS_PATH_NO_TOP
-
-        weights = get_file(weights_name, weights_path, cache_subdir='models')
+        if K.image_dim_ordering() == "th":
+            weights = get_file('vgg16_weights_th_dim_ordering_th_kernels_notop.h5', THEANO_WEIGHTS_PATH_NO_TOP,
+                                   cache_subdir='models')
+        else:
+            weights = get_file('vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', TF_WEIGHTS_PATH_NO_TOP,
+                                   cache_subdir='models')
         f = h5py.File(weights)
 
         layer_names = [name for name in f.attrs['layer_names']]
