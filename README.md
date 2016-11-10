@@ -89,8 +89,9 @@ expect the code to drastically change over commits.
 
 Some things I am currently trying out:
 - [x] Training the discriminator model seperately properly. 
+- [ ] Train the full SRGAN model. (Does not work currently, causes a python recursion loop and exceeds recursion limit)
 - [ ] Fix the pixel grid formation when upscaling the image.
-- [ ] Replacing the 2 deconv layers for a Sub-Pixel Convolution layer. Note that since this is different from the original implementation, I will use a different set of build and fit methods. 
+- [x] Replacing the 2 deconv layers for a Sub-Pixel Convolution layer
 - [ ] Convert this model into an auto encoder style upsampling model. Such models learn very fast and as the discussion below shows, the outputs are almost exactly the same. Note that I will be using a different set of functions to create such a model, as it deviates from the original model.
 
 # Discussion
