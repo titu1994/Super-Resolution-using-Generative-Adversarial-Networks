@@ -338,8 +338,7 @@ class SRGANNetwork:
         gan_output = self.discriminative_model_(self.generative_model_.output)
         vgg_output = self.vgg_network.append_vgg_network(self.generative_model_.output, ip_vgg)
 
-        self.srgan_model_ = Model(input=[ip, ip_vgg],
-                                  output=[gan_output, vgg_output])
+        self.srgan_model_ = Model(input=[ip, ip_gan, ip_vgg], output=[gan_output, vgg_output])
 
         self.vgg_network.load_vgg_weight(self.srgan_model_)
 
@@ -630,9 +629,8 @@ class SRGANNetwork:
                         self.generative_network.set_trainable(self.srgan_model_, value=True)
 
                         # Use custom bypass_fit to bypass the check for same input and output batch size
-                        hist = bypass_fit(self.srgan_model_, [x_generator, x_vgg],
-                                                 [y_gan, y_vgg_dummy],
-                                                 batch_size=self.batch_size, nb_epoch=1, verbose=0)
+                        hist = bypass_fit(self.srgan_model_, [x_generator, x, x_vgg], [y_gan, y_vgg_dummy],
+                                          batch_size=self.batch_size, nb_epoch=1, verbose=0)
 
                         generative_loss = hist.history['loss'][0]
 
