@@ -62,7 +62,7 @@ class VGGNetwork:
         x = Convolution2D(128, 3, 3, activation='relu', name='vgg_conv2_1', border_mode='same')(x)
 
         if pre_train:
-            vgg_regularizer2 = ContentVGGRegularizer(weight=self.vgg_weight / 4)
+            vgg_regularizer2 = ContentVGGRegularizer(weight=self.vgg_weight // 4)
             x = Convolution2D(128, 3, 3, activation='relu', name='vgg_conv2_2', border_mode='same',
                               activity_regularizer=vgg_regularizer2)(x)
         else:
@@ -713,6 +713,11 @@ if __name__ == "__main__":
     Batch size = 1 is slower, but uses the least amount of gpu memory, and also acts as
     Instance Normalization (batch norm with 1 input image) which speeds up training slightly.
     '''
+    import warnings
+
+    warnings.warn("Due to recent changes in how regularizers are handled in Keras, the code has been updated to support the new method.\n"
+        "Please update your keras to the master branch to train properly.")
+
     srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
     srgan_network.build_srgan_model()
     plot(srgan_network.srgan_model_, 'SRGAN.png', show_shapes=True)
