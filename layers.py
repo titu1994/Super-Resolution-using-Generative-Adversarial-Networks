@@ -22,9 +22,9 @@ class Normalize(Layer):
         else:
             if K.backend() == "theano":
                 import theano.tensor as T
-                T.set_subtensor(x[:, 0, :, :], x[:, 0, :, :] - 103.939, inplace=True)
-                T.set_subtensor(x[:, 1, :, :], x[:, 1, :, :] - 116.779, inplace=True)
-                T.set_subtensor(x[:, 2, :, :], x[:, 2, :, :] - 123.680, inplace=True)
+                x = T.set_subtensor(x[:, 0, :, :], x[:, 0, :, :] - 103.939)
+                x = T.set_subtensor(x[:, 1, :, :], x[:, 1, :, :] - 116.779)
+                x = T.set_subtensor(x[:, 2, :, :], x[:, 2, :, :] - 123.680)
             else:
                 # No exact substitute for set_subtensor in tensorflow
                 # So we subtract an approximate value
