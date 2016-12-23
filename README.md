@@ -53,6 +53,12 @@ srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
 srgan_network.pre_train_srgan(iamges_path, nb_epochs=1, nb_images=50000)
 ```
 
+** NOTE **: There may be many cases where generator initializations may lead to completely solid validation images.
+ Please check the first few iterations to see if the validation images are not solid images.
+
+To counteract this, a pretrained generator model has been provided, from which you can restart training.
+Therefore the model can continue learning without hitting a bad initialization.
+
 To pretrain the Discriminator  network:
 ```
 srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
@@ -89,12 +95,16 @@ expect the code to drastically change over commits.
 
 Some things I am currently trying out:
 - [x] Training the discriminator model separately properly. 
-- [ ] Properly train SRGAN (SR ResNet + VGG + Discriminator) model.
-- [ ] Fix the pixel grid formation when upscaling the image.
+- [x] Properly train SRGAN (SR ResNet + VGG + Discriminator) model.
+- [x] Fix the pixel grid formation when upscaling the image. (With Nearest Neighbour Upscaling)
 - [x] Replacing the 2 deconv layers for a Sub-Pixel Convolution layer. 
 - [ ] Improve docs & instructions
 
 # Discussion
 There is an ongoing discussion at https://github.com/fchollet/keras/issues/3940 where I detail some of the outputs and attempts to correct 
 the errors.
+
+# Requirements
+- Theano (master branch)
+- Keras 1.2.0 +
 
