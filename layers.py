@@ -18,7 +18,7 @@ class Normalize(Layer):
 
     def call(self, x, mask=None):
         if self.type == "gan":
-            return x / self.value
+            return (x - self.value) / self.value # [0, 255] -> [-1, +1]
         else:
             if K.backend() == "theano":
                 import theano.tensor as T
