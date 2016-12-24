@@ -7,7 +7,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
 from keras.utils.data_utils import get_file
 
-from keras_training_ops import fit as bypass_fit
+from keras_ops import fit as bypass_fit
 
 from layers import Normalize, Denormalize, SubPixelUpscaling
 from loss import AdversarialLossRegularizer, ContentVGGRegularizer, TVRegularizer, psnr, dummy_loss
@@ -174,8 +174,11 @@ class DiscriminatorNetwork:
 
     def set_trainable(self, model, value=True):
         if self.gan_layers is None:
-            self.gan_layers = [layer for layer in model.layers
-                      if 'gan_' in layer.name]
+            disc_model = [layer for layer in model.layers
+                          if 'model' in layer.name][0] # Only disc model is an inner model
+
+            self.gan_layers = [layer for layer in disc_model.layers
+                               if 'gan_' in layer.name]
 
         for layer in self.gan_layers:
             layer.trainable = value
@@ -685,7 +688,7 @@ class SRGANNetwork:
 
                         # Use custom bypass_fit to bypass the check for same input and output batch size
                         hist2 = bypass_fit(self.srgan_model_, [x_generator, x, x_vgg], [y_model, y_vgg_dummy],
-                                          batch_size=self.batch_size, nb_epoch=1, verbose=0)
+                                           batch_size=self.batch_size, nb_epoch=1, verbose=0)
 
                         generative_loss = hist2.history['loss'][0]
 
@@ -778,7 +781,7 @@ if __name__ == "__main__":
     #srgan_network.pre_train_srgan(coco_path, nb_images=80000, nb_epochs=1)
 
     # Pretrain the discriminator network
-    srgan_network.pre_train_discriminator(coco_path, nb_images=40000, nb_epochs=1, batch_size=16)
+    #srgan_network.pre_train_discriminator(coco_path, nb_images=40000, nb_epochs=1, batch_size=16)
 
     # Fully train the SRGAN with VGG loss and Discriminator loss
     srgan_network.train_full_model(coco_path, nb_images=80000, nb_epochs=5)
