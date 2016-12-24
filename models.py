@@ -7,7 +7,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
 from keras.utils.data_utils import get_file
 
-from keras_ops import fit as bypass_fit
+from keras_ops import fit as bypass_fit, smooth_gan_labels
 
 from layers import Normalize, Denormalize, SubPixelUpscaling
 from loss import AdversarialLossRegularizer, ContentVGGRegularizer, TVRegularizer, psnr, dummy_loss
@@ -612,15 +612,14 @@ class SRGANNetwork:
                         # Using soft and noisy labels
                         if np.random.uniform() > disc_train_flip:
                             # give correct classifications
-                            y_gan = np.concatenate((np.random.uniform(low=0.0, high=0.3, size=self.batch_size),
-                                                    np.random.uniform(low=0.7, high=1.2, size=self.batch_size)))
+                            y_gan = [0] * self.batch_size + [1] * self.batch_size
                         else:
                             # give wrong classifications (noisy labels)
-                            y_gan = np.concatenate((np.random.uniform(low=0.7, high=1.2, size=self.batch_size),
-                                                    np.random.uniform(low=0.0, high=0.3, size=self.batch_size)))
+                            y_gan = [1] * self.batch_size + [0] * self.batch_size
 
-                        y_gan = np.asarray(y_gan, dtype=np.float32).reshape(-1, 1)
+                        y_gan = np.asarray(y_gan, dtype=np.int).reshape(-1, 1)
                         y_gan = to_categorical(y_gan, nb_classes=2)
+                        y_gan = smooth_gan_labels(y_gan)
 
                         hist = self.discriminative_model_.fit(X, y_gan, batch_size=self.batch_size,
                                                               nb_epoch=1, verbose=0)
@@ -663,15 +662,14 @@ class SRGANNetwork:
                         # Using soft and noisy labels
                         if np.random.uniform() > disc_train_flip:
                             # give correct classifications
-                            y_gan = np.concatenate((np.random.uniform(low=0.0, high=0.3, size=self.batch_size),
-                                                    np.random.uniform(low=0.7, high=1.2, size=self.batch_size)))
+                            y_gan = [0] * self.batch_size + [1] * self.batch_size
                         else:
                             # give wrong classifications (noisy labels)
-                            y_gan = np.concatenate((np.random.uniform(low=0.7, high=1.2, size=self.batch_size),
-                                                    np.random.uniform(low=0.0, high=0.3, size=self.batch_size)))
+                            y_gan = [1] * self.batch_size + [0] * self.batch_size
 
-                        y_gan = np.asarray(y_gan, dtype=np.float32).reshape(-1, 1)
+                        y_gan = np.asarray(y_gan, dtype=np.int).reshape(-1, 1)
                         y_gan = to_categorical(y_gan, nb_classes=2)
+                        y_gan = smooth_gan_labels(y_gan)
 
                         hist1 = self.discriminative_model_.fit(X, y_gan, verbose=0, batch_size=self.batch_size,
                                                               nb_epoch=1)
@@ -683,8 +681,10 @@ class SRGANNetwork:
                         self.generative_network.set_trainable(self.srgan_model_, value=True)
 
                         # Using soft labels
-                        y_model = np.random.uniform(low=0.7, high=1.2, size=self.batch_size)
+                        y_model = [1] * self.batch_size
+                        y_model = np.asarray(y_model, dtype=np.int).reshape(-1, 1)
                         y_model = to_categorical(y_model, nb_classes=2)
+                        y_model = smooth_gan_labels(y_model)
 
                         # Use custom bypass_fit to bypass the check for same input and output batch size
                         hist2 = bypass_fit(self.srgan_model_, [x_generator, x, x_vgg], [y_model, y_vgg_dummy],
