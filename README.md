@@ -62,7 +62,7 @@ Therefore the model can continue learning without hitting a bad initialization.
 To pretrain the Discriminator  network:
 ```
 srgan_network = SRGANNetwork(img_width=32, img_height=32, batch_size=1)
-srgan_network.pre_train_discriminator(iamges_path, nb_epochs=1, nb_images=50000)
+srgan_network.pre_train_discriminator(iamges_path, nb_epochs=1, nb_images=50000, batchsize=16)
 ```
 
 To train the full network (Does NOT work properly right now, Discriminator is not correctly trained):
@@ -94,10 +94,11 @@ The codebase is currently very chaotic, since I am focusing on correct implement
 expect the code to drastically change over commits. 
 
 Some things I am currently trying out:
-- [x] Training the discriminator model separately properly. 
+- [x] Training the discriminator model separately properly.
+- [x] Training the discriminator using soft labels and adversarial loss.
 - [x] Properly train SRGAN (SR ResNet + VGG + Discriminator) model.
-- [x] Fix the pixel grid formation when upscaling the image. (With Nearest Neighbour Upscaling)
-- [x] Replacing the 2 deconv layers for a Sub-Pixel Convolution layer. 
+- [x] Fix the pixel grid formation when upscaling the image. (With Nearest Neighbour Upscaling).
+- [x] Replacing the 2 deconv layers for a nearest neighbour upsampling layers.
 - [ ] Improve docs & instructions
 
 # Discussion
