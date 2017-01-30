@@ -38,11 +38,9 @@ def _standardize_user_data(model, x, y,
             output_shapes.append(output_shape)
     x = standardize_input_data(x, model.input_names,
                                model.internal_input_shapes,
-                               check_batch_dim=False,
                                exception_prefix='model input')
     y = standardize_input_data(y, model.output_names,
                                output_shapes,
-                               check_batch_dim=False,
                                exception_prefix='model target')
     sample_weights = standardize_sample_weights(sample_weight,
                                                 model.output_names)
