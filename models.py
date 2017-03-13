@@ -270,7 +270,6 @@ class GenerativeNetwork:
         x = Convolution2D(self.filters, 3, 3, activation='linear', border_mode='same', name='sr_res_conv_' + str(id) + '_2',
                           init=self.init)(x)
         x = BatchNormalization(axis=channel_axis, mode=self.mode, name='sr_res_bn_' + str(id) + '_2')(x)
-        x = LeakyReLU(alpha=0.3, name="sr_res_activation_" + str(id) + "_2")(x)
 
         m = merge([x, init], mode='sum', name="sr_res_merge_" + str(id))
 
